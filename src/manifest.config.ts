@@ -1,0 +1,41 @@
+// Manifest configuration for Vite
+import { defineManifest } from "@crxjs/vite-plugin";
+
+export default defineManifest({
+  manifest_version: 3,
+  name: "AI Translation Extension",
+  version: "0.1.0",
+  description: "Translate web pages powered by LLMs via APIs compatible with the OpenAI GPT protocol",
+  permissions: [
+    "activeTab",
+    "storage",
+    "contextMenus",
+  ],
+  host_permissions: [
+    "https://*/*",
+    "http://*/*",
+  ],
+  background: {
+    service_worker: "src/background.ts",
+    type: "module",
+  },
+  content_scripts: [
+    {
+      matches: ["<all_urls>"],
+      js: ["src/content.ts"],
+    },
+  ],
+  action: {
+    default_popup: "src/popup.html",
+    default_icon: {
+      32: "icons/icon-32.png",
+      64: "icons/icon-64.png",
+      128: "icons/icon-128.png",
+    },
+  },
+  icons: {
+    32: "icons/icon-32.png",
+    64: "icons/icon-64.png",
+    128: "icons/icon-128.png",
+  },
+});
