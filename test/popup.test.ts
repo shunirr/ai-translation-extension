@@ -101,7 +101,7 @@ describe('Popup', () => {
       expect(mockElements.apiEndpoint.value).toBe('')
       expect(mockElements.apiKey.value).toBe('')
       expect(mockElements.model.value).toBe('')
-      expect(mockElements.targetLanguage.value).toBe('Japanese')
+      expect(mockElements.targetLanguage.value).toBe('ja')
     })
   })
 
@@ -124,7 +124,7 @@ describe('Popup', () => {
         apiEndpoint: 'https://new.api.com',
         apiKey: 'new-key',
         model: 'gpt-3.5-turbo',
-        targetLanguage: 'Korean',
+        targetLanguage: 'ko',
         viewportTranslation: true
       })
       
@@ -147,8 +147,8 @@ describe('Popup', () => {
       expect(chrome.storage.local.set).toHaveBeenCalledWith({
         apiEndpoint: 'https://api.openai.com/v1/chat/completions',
         apiKey: 'some-key',
-        model: 'gpt-3.5-turbo',
-        targetLanguage: 'Japanese',
+        model: 'gpt-4.1-nano',
+        targetLanguage: 'ja',
         viewportTranslation: true
       })
     })
