@@ -54,16 +54,37 @@ export function extractTextNodes(element: Element): Node[] {
 // Convert HTML content to placeholder format
 export function htmlToPlaceholders(html: string): { text: string; map: Map<string, string> } {
   const placeholderMap = new Map<string, string>()
-  let placeholderIndex = 0
+  const tagStack: { tagName: string; index: number }[] = []
+  let tagCounter = 0
   
   // Replace HTML tags with placeholders
   const text = html.replace(/<(\/?[^>]+)>/g, (match, tag) => {
     // Extract tag name and determine if it's a closing tag
     const isClosing = tag.startsWith('/')
-    const tagName = tag.replace(/^\//, '').split(/[\s>]/)[0].toLowerCase().replace(/[^a-z0-9]/g, '')
-    const placeholder = isClosing ? `</${tagName}_${placeholderIndex}>` : `<${tagName}_${placeholderIndex}>`
+    const tagContent = tag.replace(/^\//, '')
+    const tagName = tagContent.split(/[\s>]/)[0].toLowerCase().replace(/[^a-z0-9]/g, '')
+    
+    let placeholder: string
+    if (isClosing) {
+      // Find the matching opening tag
+      const openingTag = tagStack.reverse().find(t => t.tagName === tagName)
+      tagStack.reverse()
+      if (openingTag) {
+        placeholder = `</${tagName}_${openingTag.index}>`
+        // Remove from stack
+        const index = tagStack.findIndex(t => t.tagName === tagName && t.index === openingTag.index)
+        if (index !== -1) tagStack.splice(index, 1)
+      } else {
+        placeholder = `</${tagName}_${tagCounter}>`
+        tagCounter++
+      }
+    } else {
+      placeholder = `<${tagName}_${tagCounter}>`
+      tagStack.push({ tagName, index: tagCounter })
+      tagCounter++
+    }
+    
     placeholderMap.set(placeholder, match)
-    placeholderIndex++
     return placeholder
   })
   

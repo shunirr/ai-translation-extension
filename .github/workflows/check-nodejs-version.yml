@@ -1,0 +1,51 @@
+name: Check Node.js Version
+
+on:
+  pull_request:
+    paths:
+      - 'mise.toml'
+      - '.github/workflows/ci.yml'
+      - '.github/workflows/check-nodejs-version.yml'
+  push:
+    branches: [ main ]
+    paths:
+      - 'mise.toml'
+      - '.github/workflows/ci.yml'
+      - '.github/workflows/check-nodejs-version.yml'
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Extract Node.js version from mise.toml
+      id: mise-version
+      run: |
+        MISE_VERSION=$(grep -E '^node\s*=' mise.toml | cut -d'"' -f2)
+        echo "version=$MISE_VERSION" >> $GITHUB_OUTPUT
+        echo "mise.toml Node.js version: $MISE_VERSION"
+
+    - name: Extract Node.js version from CI workflow
+      id: ci-version
+      run: |
+        CI_VERSION=$(grep -E "node-version:\s*['\"]?[0-9.]+" .github/workflows/ci.yml | grep -o "[0-9.]\+" | head -1)
+        echo "version=$CI_VERSION" >> $GITHUB_OUTPUT
+        echo "CI workflow Node.js version: $CI_VERSION"
+
+    - name: Compare versions
+      run: |
+        MISE_VERSION="${{ steps.mise-version.outputs.version }}"
+        CI_VERSION="${{ steps.ci-version.outputs.version }}"
+        
+        if [ "$MISE_VERSION" != "$CI_VERSION" ]; then
+          echo "❌ Version mismatch detected!"
+          echo "mise.toml: $MISE_VERSION"
+          echo "CI workflow: $CI_VERSION"
+          echo ""
+          echo "Please update the Node.js version in .github/workflows/ci.yml to match mise.toml"
+          exit 1
+        else
+          echo "✅ Node.js versions match: $MISE_VERSION"
+        fi
