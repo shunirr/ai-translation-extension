@@ -314,7 +314,9 @@ describe('Content Script - Viewport Translation', () => {
         await new Promise(resolve => setTimeout(resolve, 100))
       }
       
-      await new Promise(resolve => setTimeout(resolve, 500))
+      // Wait longer for rate limiter and translation to complete
+      // With 0.5 RPS, we need at least 2 seconds between requests
+      await new Promise(resolve => setTimeout(resolve, 7000))
       
       // All elements should be translated
       const paragraphs = document.querySelectorAll('p')
@@ -326,6 +328,6 @@ describe('Content Script - Viewport Translation', () => {
         }
       })
       expect(translatedCount).toBe(paragraphs.length)
-    })
+    }, 10000)
   })
 })

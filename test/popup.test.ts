@@ -20,6 +20,7 @@ const mockElements = {
   apiKey: { value: '', addEventListener: vi.fn() } as any,
   model: { value: '', addEventListener: vi.fn() } as any,
   targetLanguage: { value: 'Japanese', addEventListener: vi.fn() } as any,
+  apiRps: { value: '0.5', addEventListener: vi.fn() } as any,
   viewportTranslation: { checked: true, addEventListener: vi.fn() } as any,
   saveSettings: { addEventListener: vi.fn() } as any,
   translatePage: { addEventListener: vi.fn() } as any,
@@ -34,6 +35,7 @@ document.getElementById = vi.fn((id: string) => {
     'api-key': mockElements.apiKey,
     'model': mockElements.model,
     'target-language': mockElements.targetLanguage,
+    'api-rps': mockElements.apiRps,
     'viewport-translation': mockElements.viewportTranslation,
     'save-settings': mockElements.saveSettings,
     'translate-page': mockElements.translatePage,
@@ -51,6 +53,7 @@ describe('Popup', () => {
     mockElements.apiKey.value = ''
     mockElements.model.value = ''
     mockElements.targetLanguage.value = 'ja'
+    mockElements.apiRps.value = '0.5'
     mockElements.viewportTranslation.checked = true
     mockElements.status.textContent = ''
     mockElements.status.className = 'status'
@@ -82,6 +85,7 @@ describe('Popup', () => {
         'apiKey',
         'model',
         'targetLanguage',
+        'apiRps',
         'viewportTranslation'
       ])
       
@@ -112,8 +116,8 @@ describe('Popup', () => {
       // Set input values
       mockElements.apiEndpoint.value = 'https://new.api.com'
       mockElements.apiKey.value = 'new-key'
-      mockElements.model.value = 'gpt-3.5-turbo'
-      mockElements.targetLanguage.value = 'ko'
+      mockElements.model.value = 'gpt-4'
+      mockElements.targetLanguage.value = 'Japanese'
       
       // Simulate click
       mockElements.saveSettings.click?.()
@@ -123,8 +127,9 @@ describe('Popup', () => {
       expect(chrome.storage.local.set).toHaveBeenCalledWith({
         apiEndpoint: 'https://new.api.com',
         apiKey: 'new-key',
-        model: 'gpt-3.5-turbo',
-        targetLanguage: 'ko',
+        model: 'gpt-4',
+        targetLanguage: 'Japanese',
+        apiRps: 0.5,
         viewportTranslation: true
       })
       
@@ -149,6 +154,7 @@ describe('Popup', () => {
         apiKey: 'some-key',
         model: 'gpt-4.1-nano',
         targetLanguage: 'ja',
+        apiRps: 0.5,
         viewportTranslation: true
       })
     })

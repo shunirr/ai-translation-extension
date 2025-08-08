@@ -5,7 +5,7 @@ import { configureApi } from './api'
 chrome.runtime.onInstalled.addListener(async () => {
   // Initialize API with saved RPS setting
   const settings = await chrome.storage.local.get(['apiRps'])
-  configureApi({ rps: settings.apiRps || 1 })
+  configureApi({ rps: settings.apiRps || 0.5 })
   
   // Create context menu item
   chrome.contextMenus.create({
@@ -26,7 +26,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 // Listen for storage changes to update RPS
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName === 'local' && changes.apiRps) {
-    configureApi({ rps: changes.apiRps.newValue || 1 })
+    configureApi({ rps: changes.apiRps.newValue || 0.5 })
   }
 })
 
