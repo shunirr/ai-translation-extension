@@ -22,11 +22,14 @@ describe('RateLimiter', () => {
       rateLimiter.execute(mockFn)
     ]
     
-    // First 2 should execute immediately
+    // First one should execute immediately
     await vi.advanceTimersByTimeAsync(50)
+    expect(mockFn).toHaveBeenCalledTimes(1)
+    
+    // Next one should execute after 500ms (1000ms / 2 RPS = 500ms interval)
+    await vi.advanceTimersByTimeAsync(500)
     expect(mockFn).toHaveBeenCalledTimes(2)
     
-    // Next 2 should execute after 500ms each (1000ms / 2 RPS = 500ms interval)
     await vi.advanceTimersByTimeAsync(500)
     expect(mockFn).toHaveBeenCalledTimes(3)
     

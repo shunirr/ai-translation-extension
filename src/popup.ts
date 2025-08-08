@@ -38,7 +38,7 @@ async function loadSettings() {
   if (settings.apiRps !== undefined) {
     apiRpsInput.value = settings.apiRps.toString()
   } else {
-    apiRpsInput.value = '1' // Default to 1 RPS
+    apiRpsInput.value = '0.5' // Default to 0.5 RPS
   }
   if (settings.viewportTranslation !== undefined) {
     viewportTranslationCheckbox.checked = settings.viewportTranslation
@@ -54,7 +54,7 @@ async function saveSettings() {
     apiKey: apiKeyInput.value,
     model: modelInput.value || 'gpt-4.1-nano',
     targetLanguage: targetLanguageInput.value || 'Japanese',
-    apiRps: parseFloat(apiRpsInput.value) || 1,
+    apiRps: parseFloat(apiRpsInput.value) || 0.5,
     viewportTranslation: viewportTranslationCheckbox.checked
   }
   

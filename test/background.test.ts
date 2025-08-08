@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
+// Mock configureApi before importing background
+vi.mock('../src/api', () => ({
+  configureApi: vi.fn(),
+}))
+
 // Mock chrome API
 global.chrome = {
   runtime: {
@@ -60,7 +65,7 @@ describe('Background Script', () => {
       await import('../src/background')
 
       // Trigger installation
-      installedListener()
+      await installedListener()
 
       expect(chrome.contextMenus.create).toHaveBeenCalledWith({
         id: 'translate-page',
