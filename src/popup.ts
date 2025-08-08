@@ -5,6 +5,7 @@ const apiEndpointInput = document.getElementById('api-endpoint') as HTMLInputEle
 const apiKeyInput = document.getElementById('api-key') as HTMLInputElement
 const modelInput = document.getElementById('model') as HTMLInputElement
 const targetLanguageInput = document.getElementById('target-language') as HTMLInputElement
+const apiRpsInput = document.getElementById('api-rps') as HTMLInputElement
 const viewportTranslationCheckbox = document.getElementById('viewport-translation') as HTMLInputElement
 const saveSettingsButton = document.getElementById('save-settings') as HTMLButtonElement
 const translateButton = document.getElementById('translate-page') as HTMLButtonElement
@@ -18,6 +19,7 @@ async function loadSettings() {
     'apiKey',
     'model',
     'targetLanguage',
+    'apiRps',
     'viewportTranslation'
   ])
   
@@ -33,6 +35,11 @@ async function loadSettings() {
   if (settings.targetLanguage) {
     targetLanguageInput.value = settings.targetLanguage
   }
+  if (settings.apiRps !== undefined) {
+    apiRpsInput.value = settings.apiRps.toString()
+  } else {
+    apiRpsInput.value = '1' // Default to 1 RPS
+  }
   if (settings.viewportTranslation !== undefined) {
     viewportTranslationCheckbox.checked = settings.viewportTranslation
   } else {
@@ -47,6 +54,7 @@ async function saveSettings() {
     apiKey: apiKeyInput.value,
     model: modelInput.value || 'gpt-4.1-nano',
     targetLanguage: targetLanguageInput.value || 'Japanese',
+    apiRps: parseFloat(apiRpsInput.value) || 1,
     viewportTranslation: viewportTranslationCheckbox.checked
   }
   

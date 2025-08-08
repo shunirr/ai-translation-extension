@@ -24,6 +24,15 @@ global.chrome = {
     setBadgeBackgroundColor: vi.fn(),
     setIcon: vi.fn(),
   },
+  storage: {
+    local: {
+      get: vi.fn().mockResolvedValue({}),
+      set: vi.fn().mockResolvedValue(undefined),
+    },
+    onChanged: {
+      addListener: vi.fn(),
+    },
+  },
 } as any
 
 describe('Background Script', () => {

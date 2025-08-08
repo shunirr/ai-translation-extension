@@ -1,5 +1,7 @@
 // API wrapper for LLMs compatible with OpenAI GPT protocol
 
+import { RateLimiter } from './rate-limiter'
+
 export interface TranslationRequest {
   text: string
   targetLanguage: string
@@ -8,9 +10,29 @@ export interface TranslationRequest {
   model: string
 }
 
+export interface ApiConfig {
+  rps?: number
+}
+
 export interface TranslationResponse {
   translatedText: string
   error?: string
+}
+
+let rateLimiter: RateLimiter | null = null
+
+export function configureApi(config: ApiConfig): void {
+  if (!rateLimiter || config.rps !== undefined) {
+    rateLimiter = new RateLimiter(config.rps || 1)
+  }
+}
+
+export function updateRateLimit(rps: number): void {
+  if (!rateLimiter) {
+    rateLimiter = new RateLimiter(rps)
+  } else {
+    rateLimiter.updateRPS(rps)
+  }
 }
 
 export async function translateText(request: TranslationRequest): Promise<TranslationResponse> {
@@ -29,7 +51,11 @@ Preserve all HTML placeholders in the format <tag_n> exactly as they appear in t
 Only return the translated text without any explanation.`
   
   try {
-    const response = await fetch(apiEndpoint, {
+    if (!rateLimiter) {
+      rateLimiter = new RateLimiter(1)
+    }
+    
+    const response = await rateLimiter.execute(() => fetch(apiEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -44,7 +70,7 @@ Only return the translated text without any explanation.`
         temperature: 0.3,
         max_tokens: 4000
       })
-    })
+    }))
     
     if (!response.ok) {
       throw new Error(`API request failed: ${response.status} ${response.statusText}`)

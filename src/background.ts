@@ -1,6 +1,12 @@
 // Background script for AI Translation Extension
 
-chrome.runtime.onInstalled.addListener(() => {
+import { configureApi } from './api'
+
+chrome.runtime.onInstalled.addListener(async () => {
+  // Initialize API with saved RPS setting
+  const settings = await chrome.storage.local.get(['apiRps'])
+  configureApi({ rps: settings.apiRps || 1 })
+  
   // Create context menu item
   chrome.contextMenus.create({
     id: 'translate-page',
@@ -14,6 +20,13 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === 'translate-page' && tab?.id) {
     // Send message to content script to start translation
     chrome.tabs.sendMessage(tab.id, { action: 'translate' })
+  }
+})
+
+// Listen for storage changes to update RPS
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === 'local' && changes.apiRps) {
+    configureApi({ rps: changes.apiRps.newValue || 1 })
   }
 })
 
