@@ -13,6 +13,22 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Check Node.js version consistency
+      run: |
+        MISE_VERSION=$(grep -E '^node\s*=' mise.toml | cut -d'"' -f2)
+        CI_VERSION="24.5.0"
+        
+        if [ "$MISE_VERSION" != "$CI_VERSION" ]; then
+          echo "❌ Version mismatch detected!"
+          echo "mise.toml: $MISE_VERSION"
+          echo "CI workflow: $CI_VERSION"
+          echo ""
+          echo "Please update the Node.js version in this workflow to match mise.toml"
+          exit 1
+        else
+          echo "✅ Node.js versions match: $MISE_VERSION"
+        fi
+
     - name: Use Node.js 24.5.0
       uses: actions/setup-node@v4
       with:
