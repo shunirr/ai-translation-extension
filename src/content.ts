@@ -1,6 +1,6 @@
 // Content script for AI Translation Extension
 
-import { translateElement, getTranslatableElements } from './element-translator'
+import { getTranslatableElements } from './element-translator'
 import { BatchTranslator } from './batch-translator'
 
 interface TranslationSettings {
@@ -80,18 +80,56 @@ function showError(message: string) {
 }
 
 // Create intersection observer for viewport-based translation
-function createTranslationObserver(_settings: TranslationSettings): IntersectionObserver {
+function createTranslationObserver(settings: TranslationSettings): IntersectionObserver {
+  const batchTranslator = new BatchTranslator({
+    maxCharactersPerBatch: settings.batchSize
+  })
+  
+  let pendingElements: Element[] = []
+  let batchTimeout: NodeJS.Timeout | null = null
+  
+  const processPendingBatch = async () => {
+    if (pendingElements.length === 0) return
+    
+    const elementsToTranslate = [...pendingElements]
+    pendingElements = []
+    
+    try {
+      await batchTranslator.translateElements(elementsToTranslate, settings)
+    } catch (error) {
+      // On error, remove from translatedElements so it can be retried
+      elementsToTranslate.forEach(element => {
+        translatedElements.delete(element)
+      })
+      console.error('Batch translation error:', error)
+    }
+  }
+  
   return new IntersectionObserver(
     (entries) => {
+      const newVisibleElements: Element[] = []
+      
       entries.forEach(entry => {
-        if (entry.isIntersecting && !translatedElements.has(entry.target)) {
-          const translateFunc = pendingTranslations.get(entry.target)
-          if (translateFunc) {
-            translateFunc()
-            pendingTranslations.delete(entry.target)
-          }
+        if (entry.isIntersecting && 
+            !translatedElements.has(entry.target) && 
+            !entry.target.hasAttribute('data-translated')) {
+          newVisibleElements.push(entry.target)
+          // Mark as pending to prevent duplicate processing
+          translatedElements.add(entry.target)
         }
       })
+      
+      if (newVisibleElements.length > 0) {
+        pendingElements.push(...newVisibleElements)
+        
+        // Clear existing timeout
+        if (batchTimeout) clearTimeout(batchTimeout)
+        
+        // Wait 100ms to collect more elements before processing
+        batchTimeout = setTimeout(() => {
+          processPendingBatch()
+        }, 100)
+      }
     },
     {
       rootMargin: '50px', // Start translating 50px before element comes into view
@@ -102,16 +140,13 @@ function createTranslationObserver(_settings: TranslationSettings): Intersection
 
 // Translate the page (viewport-based)
 async function translatePage() {
-  console.log('[Content] translatePage called')
   if (isTranslating) {
-    console.log('[Content] Already translating, skipping')
     return { status: 'already_translating', message: 'Translation already in progress' }
   }
 
   isTranslating = true
   showProgress()
   
-  console.log('[Content] Sending updateBadge message')
   // Update badge to show translation in progress
   chrome.runtime.sendMessage({ action: 'updateBadge', status: 'translating' })
 
@@ -156,20 +191,9 @@ async function translatePage() {
       
       // Get translatable elements and set up observers
       const translatableElements = getTranslatableElements()
-      console.log('[Content] Found', translatableElements.length, 'translatable elements')
       
       translatableElements.forEach(element => {
-        // Create translation function
-        pendingTranslations.set(element, async () => {
-          try {
-            await translateElement(element, settings)
-            translatedElements.add(element)
-          } catch (error) {
-            console.error('Translation error for element:', error)
-          }
-        })
-        
-        // Observe element
+        // Just observe element without setting up individual translation
         translationObserver!.observe(element)
         observedCount++
       })
@@ -179,20 +203,17 @@ async function translatePage() {
         const rect = el.getBoundingClientRect()
         return rect.top < window.innerHeight && rect.bottom > 0
       })
-      console.log('[Content] Found', visibleElements.length, 'visible elements')
       
       // Use batch translator for visible elements
       const batchTranslator = new BatchTranslator({
         maxCharactersPerBatch: settings.batchSize
       })
-      console.log('[Content] Created BatchTranslator with max', settings.batchSize, 'characters per batch')
       
       // Update progress
       if (progressIndicator) {
         progressIndicator.textContent = `Translating visible content... (${visibleElements.length} elements)`
       }
       
-      console.log('[Content] Starting batch translation')
       await batchTranslator.translateElements(visibleElements, settings)
       
       // Mark translated elements
@@ -315,24 +336,12 @@ function restorePage() {
 
 // Listen for messages from background script
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
-  console.log('[Content] Received message:', request)
   if (request.action === 'translate') {
-    console.log('[Content] Starting translation')
-    translatePage().then(result => {
-      console.log('[Content] Translation completed:', result)
-      sendResponse(result)
-    }).catch(error => {
-      console.error('[Content] Translation error:', error)
-      sendResponse({ status: 'error', message: error.message })
-    })
+    translatePage().then(sendResponse)
     return true // Will respond asynchronously
   } else if (request.action === 'restore') {
-    console.log('[Content] Restoring page')
     sendResponse(restorePage())
   }
 })
-
-// Log that content script is loaded
-console.log('[Content] Content script loaded and ready')
 
 export {}

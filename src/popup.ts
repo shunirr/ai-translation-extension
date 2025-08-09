@@ -82,17 +82,12 @@ function showStatus(message: string, type: 'success' | 'error' | 'info') {
 
 // Handle translate button click
 async function handleTranslate() {
-  console.log('[Popup] Translate button clicked')
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
-  console.log('[Popup] Current tab:', tab)
   
   if (tab.id) {
-    console.log('[Popup] Sending translate message to tab', tab.id)
     chrome.tabs.sendMessage(tab.id, { action: 'translate' })
     showStatus('Translation started...', 'info')
     window.close()
-  } else {
-    console.error('[Popup] No tab ID found')
   }
 }
 
