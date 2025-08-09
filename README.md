@@ -22,8 +22,8 @@ A browser extension that translates web pages powered by LLMs via APIs compatibl
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
-cd chrome-extension-openai-translation
+git@github.com:shunirr/ai-translation-extension.git
+cd ai-translation-extension
 ```
 
 2. Install Node.js via mise:
