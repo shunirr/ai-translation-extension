@@ -71,7 +71,7 @@ describe('API', () => {
       const body = JSON.parse(fetchCall[1]?.body as string)
       
       expect(body.messages[0].content).toContain('Korean')
-      expect(body.messages[0].content).toContain('Preserve all HTML placeholders')
+      expect(body.messages[0].content).toContain('CRITICAL: You MUST preserve ALL HTML placeholders')
     })
 
     it('should handle API errors', async () => {

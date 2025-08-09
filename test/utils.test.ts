@@ -154,7 +154,7 @@ describe('Utils', () => {
       expect(restoredHtml).toContain('太字')
     })
 
-    it('should remove unmatched placeholders', () => {
+    it('should handle unmatched placeholders gracefully', () => {
       const html = 'Normal text'
       const { map } = htmlToPlaceholders(html)
       
@@ -163,7 +163,8 @@ describe('Utils', () => {
       
       const restoredHtml = placeholdersToHtml(textWithBrokenPlaceholders, map)
       
-      expect(restoredHtml).toBe('Normal text  and ')
+      // Our new logic tries to preserve structure as simple tags
+      expect(restoredHtml).toBe('Normal text <random> and </broken>')
     })
   })
 

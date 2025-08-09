@@ -221,6 +221,9 @@ export function placeholdersToHtml(
     }
   }
   
+  // Track which placeholders have been used
+  const usedPlaceholders = new Set<string>()
+  
   // Clean up any remaining malformed placeholders that weren't in our map
   // This catches cases where the LLM created variations we didn't anticipate
   result = result.replace(/<\s*\/?\s*[a-zA-Z]+_\d+\s*>/gi, (match) => {
@@ -229,12 +232,14 @@ export function placeholdersToHtml(
     
     // Try exact match first
     if (map.has(normalizedMatch)) {
+      usedPlaceholders.add(normalizedMatch)
       return map.get(normalizedMatch)!
     }
     
     // Try case-insensitive match
     for (const [placeholder, original] of map.entries()) {
       if (placeholder.toLowerCase() === normalizedMatch.toLowerCase()) {
+        usedPlaceholders.add(placeholder)
         return original
       }
     }
@@ -245,8 +250,10 @@ export function placeholdersToHtml(
       const [, tag] = matchPattern
       const isClosing = normalizedMatch.startsWith('</')
       
-      // Look for similar tags with different numbers
+      // Look for similar tags with different numbers that haven't been used yet
       for (const [placeholder, original] of map.entries()) {
+        if (usedPlaceholders.has(placeholder)) continue // Skip already used placeholders
+        
         const placeholderPattern = placeholder.match(/<\/?([a-zA-Z]+)_(\d+)>/)
         if (placeholderPattern) {
           const [, pTag] = placeholderPattern
@@ -255,15 +262,57 @@ export function placeholdersToHtml(
           // Match same tag type and open/close state
           if (tag.toLowerCase() === pTag.toLowerCase() && isClosing === pIsClosing) {
             console.warn(`Unmatched placeholder ${match} replaced with ${placeholder}`)
+            usedPlaceholders.add(placeholder)
             return original
           }
         }
       }
     }
     
-    // If no match found, remove it to avoid displaying broken placeholders
-    console.warn('Unmatched placeholder found and removed:', match)
-    return ''
+    // If no match found, try to preserve the original structure
+    // Look for any unused placeholder of the same tag type
+    if (matchPattern) {
+      const [, tag] = matchPattern
+      const isClosing = normalizedMatch.startsWith('</')
+      
+      for (const [placeholder, original] of map.entries()) {
+        if (!usedPlaceholders.has(placeholder)) {
+          const pPattern = placeholder.match(/<\/?([a-zA-Z]+)_(\d+)>/)
+          if (pPattern && pPattern[1].toLowerCase() === tag.toLowerCase()) {
+            const pIsClosing = placeholder.startsWith('</')
+            if (isClosing === pIsClosing) {
+              console.warn(`Unmatched placeholder ${match} replaced with unused ${placeholder}`)
+              usedPlaceholders.add(placeholder)
+              return original
+            }
+          }
+        }
+      }
+    }
+    
+    // Last resort: if it's a closing tag, try to find any matching opening tag that was used
+    // and reconstruct the closing tag
+    if (normalizedMatch.startsWith('</')) {
+      const tagName = normalizedMatch.match(/<\/([a-zA-Z]+)_\d+>/)?.[1]
+      if (tagName) {
+        // Return a reconstructed closing tag
+        console.warn(`Unmatched placeholder ${match} - reconstructing closing tag`)
+        return `</${tagName}>`
+      }
+    }
+    
+    // If it's an opening tag and we can't find a match, preserve it with minimal structure
+    if (!normalizedMatch.startsWith('</')) {
+      const tagName = normalizedMatch.match(/<([a-zA-Z]+)_\d+>/)?.[1]
+      if (tagName) {
+        console.warn(`Unmatched placeholder ${match} - preserving as simple tag`)
+        return `<${tagName}>`
+      }
+    }
+    
+    // If absolutely no match found and can't reconstruct, log error but don't remove
+    console.error('Critical: Unmatched placeholder could not be resolved:', match)
+    return '' // Last resort: remove to avoid broken display
   })
   
   // Restore block placeholders if provided

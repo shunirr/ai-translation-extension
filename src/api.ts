@@ -52,14 +52,28 @@ export async function translateText(request: TranslationRequest): Promise<Transl
   const systemPrompt = isBatch 
     ? `You are a professional translator. Translate each text segment to ${targetLanguageName}. 
 The input contains multiple text segments separated by "---DELIMITER---".
-You must:
+CRITICAL RULES:
 1. Translate each segment independently
-2. Preserve the exact delimiter "---DELIMITER---" between translations
-3. Preserve all HTML placeholders in the format <tag_n> exactly as they appear
-4. Return only the translations with delimiters, no explanations`
+2. Preserve the EXACT delimiter "---DELIMITER---" between translations
+3. NEVER remove or modify HTML placeholders like <a_0>, </a_0>, <span_1>, </span_1> etc.
+4. ALL placeholders must appear in the EXACT same format in your translation
+5. Placeholders mark HTML structure and MUST be preserved exactly as-is
+6. Return only the translations with delimiters, no explanations
+
+Example:
+Input: <a_0>Hello <span_1>world</span_1></a_0>
+Output: <a_0>こんにちは<span_1>世界</span_1></a_0>`
     : `You are a professional translator. Translate the given text to ${targetLanguageName}. 
-Preserve all HTML placeholders in the format <tag_n> exactly as they appear in the input.
-Only return the translated text without any explanation.`
+CRITICAL: You MUST preserve ALL HTML placeholders EXACTLY as they appear.
+Placeholders look like <tag_n> and </tag_n> where tag is a name and n is a number.
+These placeholders MUST appear in your translation in the EXACT same format.
+Never remove, modify, or skip any placeholder.
+
+Example:
+Input: <a_0>Click <span_1>here</span_1></a_0> to continue
+Output: <a_0><span_1>ここ</span_1>をクリック</a_0>して続行
+
+Only return the translated text.`
   
   try {
     if (!rateLimiter) {
