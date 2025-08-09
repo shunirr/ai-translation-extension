@@ -50,7 +50,7 @@ describe('API - Batch Translation', () => {
 
     expect(systemPrompt).toContain('multiple text segments separated by "---DELIMITER---"')
     expect(systemPrompt).toContain('Translate each segment independently')
-    expect(systemPrompt).toContain('Preserve the exact delimiter')
+    expect(systemPrompt).toContain('Preserve the EXACT delimiter')
   })
 
   it('should use regular prompt when no delimiter is present', async () => {
@@ -138,7 +138,7 @@ describe('API - Batch Translation', () => {
     const body = JSON.parse(fetchCall[1]?.body as string)
     const systemPrompt = body.messages[0].content
 
-    expect(systemPrompt).toContain('Preserve all HTML placeholders')
-    expect(systemPrompt).toContain('<tag_n>')
+    expect(systemPrompt).toContain('NEVER remove or modify HTML placeholders')
+    expect(systemPrompt).toContain('like <a_0>, </a_0>')
   })
 })
