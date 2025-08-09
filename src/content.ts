@@ -153,6 +153,7 @@ async function translatePage() {
       
       // Get translatable elements and set up observers
       const translatableElements = getTranslatableElements()
+      console.log('[Content] Found', translatableElements.length, 'translatable elements')
       
       translatableElements.forEach(element => {
         // Create translation function
@@ -175,17 +176,20 @@ async function translatePage() {
         const rect = el.getBoundingClientRect()
         return rect.top < window.innerHeight && rect.bottom > 0
       })
+      console.log('[Content] Found', visibleElements.length, 'visible elements')
       
       // Use batch translator for visible elements
       const batchTranslator = new BatchTranslator({
         maxCharactersPerBatch: settings.batchSize
       })
+      console.log('[Content] Created BatchTranslator with max', settings.batchSize, 'characters per batch')
       
       // Update progress
       if (progressIndicator) {
         progressIndicator.textContent = `Translating visible content... (${visibleElements.length} elements)`
       }
       
+      console.log('[Content] Starting batch translation')
       await batchTranslator.translateElements(visibleElements, settings)
       
       // Mark translated elements

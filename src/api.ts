@@ -38,6 +38,8 @@ export function updateRateLimit(rps: number): void {
 export async function translateText(request: TranslationRequest): Promise<TranslationResponse> {
   const { text, targetLanguage, apiEndpoint, apiKey, model } = request
   
+  console.log('[API] translateText called with text length:', text.length, 'target:', targetLanguage)
+  
   const languageNames = {
     ja: 'Japanese',
     en: 'English',
@@ -48,6 +50,7 @@ export async function translateText(request: TranslationRequest): Promise<Transl
   
   // Check if this is a batch request
   const isBatch = text.includes('\n---DELIMITER---\n')
+  console.log('[API] Is batch request:', isBatch)
   
   const systemPrompt = isBatch 
     ? `You are a professional translator. Translate each text segment to ${targetLanguageName}. 

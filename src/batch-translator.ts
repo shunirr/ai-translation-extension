@@ -37,12 +37,16 @@ export class BatchTranslator {
   
   // Process elements in batches
   async translateElements(elements: Element[], settings: TranslationSettings): Promise<void> {
+    console.log('[BatchTranslator] Starting translation for', elements.length, 'elements')
     const items = this.prepareTranslationItems(elements)
+    console.log('[BatchTranslator] Prepared', items.length, 'items for translation')
     const batches = this.createBatches(items, settings)
+    console.log('[BatchTranslator] Created', batches.length, 'batches')
     
     // Process each batch
-    for (const batch of batches) {
-      await this.processBatch(batch, settings)
+    for (let i = 0; i < batches.length; i++) {
+      console.log('[BatchTranslator] Processing batch', i + 1, 'of', batches.length, 'with', batches[i].length, 'items')
+      await this.processBatch(batches[i], settings)
     }
   }
   
@@ -82,10 +86,13 @@ export class BatchTranslator {
     let currentBatch: TranslationItem[] = []
     let currentSize = 0
     
+    console.log('[BatchTranslator] Creating batches from', items.length, 'items')
+    
     for (const item of items) {
       // Check cache first
       const cachedTranslation = translationCache.get(item.placeholderText, settings.targetLanguage)
       if (cachedTranslation) {
+        console.log('[BatchTranslator] Found cached translation for item')
         // Apply cached translation immediately
         const restoredHTML = placeholdersToHtml(cachedTranslation, item.placeholderMap)
         item.element.innerHTML = restoredHTML
@@ -114,18 +121,24 @@ export class BatchTranslator {
   }
   
   private async processBatch(batch: TranslationItem[], settings: TranslationSettings): Promise<void> {
-    if (batch.length === 0) return
+    if (batch.length === 0) {
+      console.log('[BatchTranslator] Empty batch, skipping')
+      return
+    }
     
     // Single item batch - process directly
     if (batch.length === 1) {
+      console.log('[BatchTranslator] Single item batch, processing directly')
       await this.processSingleItem(batch[0], settings)
       return
     }
     
     // Create batch text
     const batchText = batch.map(item => item.placeholderText).join(this.config.batchDelimiter)
+    console.log('[BatchTranslator] Batch text length:', batchText.length)
     
     try {
+      console.log('[BatchTranslator] Calling translateText API')
       const response = await translateText({
         text: batchText,
         targetLanguage: settings.targetLanguage,
@@ -134,9 +147,12 @@ export class BatchTranslator {
         model: settings.model
       })
       
+      console.log('[BatchTranslator] API response:', response)
+      
       if (!response.error && response.translatedText) {
         // Split the response
         const translations = response.translatedText.split(this.config.batchDelimiter)
+        console.log('[BatchTranslator] Split into', translations.length, 'translations')
         
         // Apply translations to elements
         for (let i = 0; i < batch.length && i < translations.length; i++) {
@@ -144,6 +160,7 @@ export class BatchTranslator {
           const translation = translations[i].trim()
           
           if (translation) {
+            console.log('[BatchTranslator] Applying translation', i + 1)
             // Cache the translation
             translationCache.set(item.placeholderText, settings.targetLanguage, translation)
             
@@ -153,6 +170,8 @@ export class BatchTranslator {
             item.element.setAttribute('data-translated', 'true')
           }
         }
+      } else {
+        console.error('[BatchTranslator] Translation failed:', response.error)
       }
     } catch (error) {
       console.error('Batch translation error:', error)
