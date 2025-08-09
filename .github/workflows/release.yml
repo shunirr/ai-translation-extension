@@ -1,0 +1,73 @@
+name: Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.0.0'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Build extension
+        run: npm run build
+        
+      - name: Get version from package.json
+        id: package_version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Extension version: $VERSION"
+          
+      - name: Create release archive
+        run: |
+          cd dist
+          zip -r ../ai-translation-extension-v${{ steps.package_version.outputs.VERSION }}.zip .
+          cd ..
+          
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.package_version.outputs.VERSION }}
+          release_name: Release v${{ steps.package_version.outputs.VERSION }}
+          body: |
+            ## AI Translation Extension v${{ steps.package_version.outputs.VERSION }}
+            
+            ### Installation
+            1. Download the `ai-translation-extension-v${{ steps.package_version.outputs.VERSION }}.zip` file from the assets below
+            2. Extract the zip file
+            3. Open Chrome and navigate to `chrome://extensions/`
+            4. Enable "Developer mode" in the top right
+            5. Click "Load unpacked" and select the extracted folder
+            
+            ### What's Changed
+            Please see the [changelog](https://github.com/${{ github.repository }}/compare/v${{ steps.package_version.outputs.VERSION }}...HEAD) for details.
+            
+          draft: true
+          prerelease: false
+          
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./ai-translation-extension-v${{ steps.package_version.outputs.VERSION }}.zip
+          asset_name: ai-translation-extension-v${{ steps.package_version.outputs.VERSION }}.zip
+          asset_content_type: application/zip
