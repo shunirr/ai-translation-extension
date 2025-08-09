@@ -23,7 +23,7 @@ let rateLimiter: RateLimiter | null = null
 
 export function configureApi(config: ApiConfig): void {
   if (!rateLimiter || config.rps !== undefined) {
-    rateLimiter = new RateLimiter(config.rps || 0.5)
+    rateLimiter = new RateLimiter(config.rps || 0.9)
   }
 }
 
@@ -63,7 +63,7 @@ Only return the translated text without any explanation.`
   
   try {
     if (!rateLimiter) {
-      rateLimiter = new RateLimiter(0.5)
+      rateLimiter = new RateLimiter(0.9)
     }
     
     const response = await rateLimiter.execute(() => fetch(apiEndpoint, {
