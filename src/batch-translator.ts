@@ -49,24 +49,19 @@ export class BatchTranslator {
   private prepareTranslationItems(elements: Element[]): TranslationItem[] {
     const items: TranslationItem[] = []
     
-    console.log('[BatchTranslator] Preparing', elements.length, 'elements for translation')
-    
     for (const element of elements) {
       // Skip if already translated
       if (element.hasAttribute('data-translated')) {
-        console.log('[BatchTranslator] Skipping already translated element')
         continue
       }
       
       // Skip if already being processed (has original HTML stored)
       if (element.hasAttribute('data-original-html')) {
-        console.log('[BatchTranslator] Skipping element already being processed')
         continue
       }
       
       const originalHTML = element.innerHTML
       if (!originalHTML.trim()) {
-        console.log('[BatchTranslator] Skipping empty element')
         continue
       }
       
@@ -84,7 +79,6 @@ export class BatchTranslator {
       })
     }
     
-    console.log('[BatchTranslator] Prepared', items.length, 'items for translation')
     return items
   }
   
@@ -135,7 +129,6 @@ export class BatchTranslator {
     
     // Create batch text
     const batchText = batch.map(item => item.placeholderText).join(this.config.batchDelimiter)
-    console.log('[BatchTranslator] Sending batch with', batch.length, 'items, total length:', batchText.length, 'chars')
     
     try {
       const response = await translateText({
@@ -159,9 +152,6 @@ export class BatchTranslator {
           translations = response.translatedText.split(this.config.batchDelimiter)
         }
         
-        // Debug log to track splitting issue
-        console.log('[BatchTranslator] Response split into', translations.length, 'parts for', batch.length, 'items')
-        
         // Apply translations to elements
         for (let i = 0; i < batch.length && i < translations.length; i++) {
           const item = batch[i]
@@ -178,9 +168,9 @@ export class BatchTranslator {
           }
         }
         
-        // Log if we have missing translations
+        // Handle missing translations silently
         if (translations.length < batch.length) {
-          console.warn('[BatchTranslator] Received fewer translations than expected:', translations.length, 'vs', batch.length)
+          // Fewer translations than expected, but continue processing what we have
         }
       } else {
         console.error('Batch translation failed:', response.error || 'No translated text')
