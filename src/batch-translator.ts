@@ -49,14 +49,24 @@ export class BatchTranslator {
   private prepareTranslationItems(elements: Element[]): TranslationItem[] {
     const items: TranslationItem[] = []
     
+    console.log('[BatchTranslator] Preparing', elements.length, 'elements for translation')
+    
     for (const element of elements) {
       // Skip if already translated
       if (element.hasAttribute('data-translated')) {
+        console.log('[BatchTranslator] Skipping already translated element')
+        continue
+      }
+      
+      // Skip if already being processed (has original HTML stored)
+      if (element.hasAttribute('data-original-html')) {
+        console.log('[BatchTranslator] Skipping element already being processed')
         continue
       }
       
       const originalHTML = element.innerHTML
       if (!originalHTML.trim()) {
+        console.log('[BatchTranslator] Skipping empty element')
         continue
       }
       
@@ -74,6 +84,7 @@ export class BatchTranslator {
       })
     }
     
+    console.log('[BatchTranslator] Prepared', items.length, 'items for translation')
     return items
   }
   
@@ -124,6 +135,7 @@ export class BatchTranslator {
     
     // Create batch text
     const batchText = batch.map(item => item.placeholderText).join(this.config.batchDelimiter)
+    console.log('[BatchTranslator] Sending batch with', batch.length, 'items, total length:', batchText.length, 'chars')
     
     try {
       const response = await translateText({
@@ -135,8 +147,20 @@ export class BatchTranslator {
       })
       
       if (!response.error && response.translatedText) {
-        // Split the response
-        const translations = response.translatedText.split(this.config.batchDelimiter)
+        // Split the response - handle various delimiter formats
+        // The delimiter might appear with extra whitespace or formatting
+        let translations: string[]
+        if (this.config.batchDelimiter === '\n---DELIMITER---\n') {
+          // For default delimiter, use flexible regex to handle variations
+          const delimiterPattern = /\s*-{3,}DELIMITER-{3,}\s*/
+          translations = response.translatedText.split(delimiterPattern)
+        } else {
+          // For custom delimiters, split exactly
+          translations = response.translatedText.split(this.config.batchDelimiter)
+        }
+        
+        // Debug log to track splitting issue
+        console.log('[BatchTranslator] Response split into', translations.length, 'parts for', batch.length, 'items')
         
         // Apply translations to elements
         for (let i = 0; i < batch.length && i < translations.length; i++) {
@@ -152,6 +176,11 @@ export class BatchTranslator {
             item.element.innerHTML = restoredHTML
             item.element.setAttribute('data-translated', 'true')
           }
+        }
+        
+        // Log if we have missing translations
+        if (translations.length < batch.length) {
+          console.warn('[BatchTranslator] Received fewer translations than expected:', translations.length, 'vs', batch.length)
         }
       } else {
         console.error('Batch translation failed:', response.error || 'No translated text')
