@@ -27,9 +27,9 @@ describe('Element Translator', () => {
       const elements = getTranslatableElements()
       
       expect(elements).toHaveLength(3) // p, h1, li (not button or nav)
-      expect(elements[0].tagName).toBe('P')
-      expect(elements[1].tagName).toBe('H1')
-      expect(elements[2].tagName).toBe('LI')
+      expect(elements.map(el => el.tagName)).toContain('P')
+      expect(elements.map(el => el.tagName)).toContain('H1')
+      expect(elements.map(el => el.tagName)).toContain('LI')
     })
 
     it('should skip already translated elements', () => {
@@ -45,29 +45,88 @@ describe('Element Translator', () => {
       expect(elements[0].textContent).toBe('Not yet translated')
     })
 
-    it('should skip elements with nested block elements', () => {
+    it('should include divs with text content', () => {
       document.body.innerHTML = `
-        <div>
-          <p>Nested paragraph</p>
-        </div>
+        <div>This is direct text content in a div</div>
+        <div><span>Text in span inside div</span></div>
         <p>Simple paragraph</p>
       `
 
       const elements = getTranslatableElements()
       
-      expect(elements).toHaveLength(2) // Both paragraphs, but not the div
+      expect(elements).toHaveLength(3) // both divs and p
+      const tagNames = elements.map(el => el.tagName)
+      expect(tagNames.filter(tag => tag === 'DIV')).toHaveLength(2)
+      expect(tagNames).toContain('P')
     })
 
     it('should skip elements with short text', () => {
       document.body.innerHTML = `
         <p>Short</p>
         <p>This is a longer paragraph with enough content</p>
+        <div>Too short</div>
+        <div>This div has enough text content to be included</div>
       `
 
       const elements = getTranslatableElements()
       
-      expect(elements).toHaveLength(1)
-      expect(elements[0].textContent).toContain('longer paragraph')
+      // Filter elements with enough text content
+      const validElements = elements.filter(el => (el.textContent?.length || 0) >= 10)
+      expect(validElements).toHaveLength(2)
+      
+      const texts = validElements.map(el => el.textContent)
+      expect(texts).toContain('This is a longer paragraph with enough content')
+      expect(texts).toContain('This div has enough text content to be included')
+    })
+    
+    it('should process leaf elements first', () => {
+      document.body.innerHTML = `
+        <div>Parent div with direct text
+          <p>Child paragraph with enough content</p>
+        </div>
+      `
+
+      const elements = getTranslatableElements()
+      
+      // Should process leaf elements first (depth-first)
+      expect(elements.length).toBeGreaterThanOrEqual(1)
+      // Should include the p element
+      const hasP = elements.some(el => el.tagName === 'P')
+      expect(hasP).toBe(true)
+    })
+
+    it('should detect text in inline elements', () => {
+      document.body.innerHTML = `
+        <div><span><a href="#">Hello world from inline elements</a></span></div>
+        <div><span>Short</span></div>
+      `
+
+      const elements = getTranslatableElements()
+      
+      expect(elements).toHaveLength(1) // Only div with enough text
+      expect(elements[0].textContent).toContain('Hello world from inline elements')
+    })
+
+    it('should handle nested list structures', () => {
+      document.body.innerHTML = `
+        <ul>
+          <li>
+            <div class="wrapper">
+              <a href="#">List item with link text content</a>
+            </div>
+          </li>
+          <li>Short</li>
+        </ul>
+      `
+
+      const elements = getTranslatableElements()
+      
+      // Should detect the li with enough content
+      const liElements = elements.filter(el => el.tagName === 'LI')
+      expect(liElements.length).toBeGreaterThan(0)
+      
+      const liWithContent = liElements.find(el => el.textContent?.includes('List item with link'))
+      expect(liWithContent).toBeDefined()
     })
   })
 

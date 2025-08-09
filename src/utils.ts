@@ -51,11 +51,97 @@ export function extractTextNodes(element: Element): Node[] {
   return textNodes
 }
 
-// Convert HTML content to placeholder format
-export function htmlToPlaceholders(html: string): { text: string; map: Map<string, string> } {
+// Block element placeholder information
+export interface BlockPlaceholder {
+  placeholder: string
+  element: Element
+  originalHTML: string
+}
+
+// Convert HTML content to placeholder format with block element extraction
+export function htmlToPlaceholders(html: string, extractBlocks?: boolean): { 
+  text: string; 
+  map: Map<string, string>;
+  blockPlaceholders?: BlockPlaceholder[]
+} {
+  if (!extractBlocks) {
+    // Original implementation for backward compatibility
+    return htmlToPlaceholdersSimple(html)
+  }
+  
+  // Parse HTML to extract block elements
+  const tempDiv = document.createElement('div')
+  tempDiv.innerHTML = html
+  
+  const blockPlaceholders: BlockPlaceholder[] = []
+  let blockCounter = 0
+  
+  // Define block elements to extract
+  const blockTags = ['div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 
+                     'blockquote', 'article', 'section', 'main', 'aside',
+                     'ul', 'ol', 'li', 'table', 'tr', 'td', 'th']
+  
+  // Process block elements
+  function processElement(element: Element): string {
+    const tagName = element.tagName.toLowerCase()
+    
+    if (blockTags.includes(tagName)) {
+      // This is a block element, create a placeholder
+      const placeholderName = `blocknode_${blockCounter}`
+      blockCounter++
+      
+      blockPlaceholders.push({
+        placeholder: `<${placeholderName}/>`,
+        element: element.cloneNode(true) as Element,
+        originalHTML: element.outerHTML
+      })
+      
+      return `<${placeholderName}/>`
+    } else {
+      // Process inline element
+      const tagIndex = blockCounter++
+      const openTag = `<${tagName}_${tagIndex}>`
+      const closeTag = `</${tagName}_${tagIndex}>`
+      
+      // Process children
+      const childrenHTML = Array.from(element.childNodes).map(child => {
+        if (child.nodeType === Node.TEXT_NODE) {
+          return child.textContent || ''
+        } else if (child.nodeType === Node.ELEMENT_NODE) {
+          return processElement(child as Element)
+        }
+        return ''
+      }).join('')
+      
+      return openTag + childrenHTML + closeTag
+    }
+  }
+  
+  // Process all top-level elements
+  const processedHTML = Array.from(tempDiv.childNodes).map(child => {
+    if (child.nodeType === Node.TEXT_NODE) {
+      return child.textContent || ''
+    } else if (child.nodeType === Node.ELEMENT_NODE) {
+      return processElement(child as Element)
+    }
+    return ''
+  }).join('')
+  
+  // Now convert the processed HTML to placeholders
+  const result = htmlToPlaceholdersSimple(processedHTML)
+  
+  return {
+    text: result.text,
+    map: result.map,
+    blockPlaceholders
+  }
+}
+
+// Original simple HTML to placeholders conversion
+function htmlToPlaceholdersSimple(html: string): { text: string; map: Map<string, string> } {
   const placeholderMap = new Map<string, string>()
   const tagStack: { tagName: string; index: number }[] = []
-  let tagCounter = 0
+  const tagCounters = new Map<string, number>() // Track counter per tag type
   
   // Replace HTML tags with placeholders
   const text = html.replace(/<(\/?[^>]+)>/g, (match, tag) => {
@@ -63,6 +149,9 @@ export function htmlToPlaceholders(html: string): { text: string; map: Map<strin
     const isClosing = tag.startsWith('/')
     const tagContent = tag.replace(/^\//, '')
     const tagName = tagContent.split(/[\s>]/)[0].toLowerCase().replace(/[^a-z0-9]/g, '')
+    
+    // Skip empty tag names
+    if (!tagName) return match
     
     let placeholder: string
     if (isClosing) {
@@ -75,13 +164,17 @@ export function htmlToPlaceholders(html: string): { text: string; map: Map<strin
         const index = tagStack.findIndex(t => t.tagName === tagName && t.index === openingTag.index)
         if (index !== -1) tagStack.splice(index, 1)
       } else {
-        placeholder = `</${tagName}_${tagCounter}>`
-        tagCounter++
+        // No matching opening tag, use next available number
+        const counter = tagCounters.get(tagName) || 0
+        placeholder = `</${tagName}_${counter}>`
+        tagCounters.set(tagName, counter + 1)
       }
     } else {
-      placeholder = `<${tagName}_${tagCounter}>`
-      tagStack.push({ tagName, index: tagCounter })
-      tagCounter++
+      // Get counter for this tag type
+      const counter = tagCounters.get(tagName) || 0
+      placeholder = `<${tagName}_${counter}>`
+      tagStack.push({ tagName, index: counter })
+      tagCounters.set(tagName, counter + 1)
     }
     
     placeholderMap.set(placeholder, match)
@@ -91,8 +184,12 @@ export function htmlToPlaceholders(html: string): { text: string; map: Map<strin
   return { text, map: placeholderMap }
 }
 
-// Restore placeholders back to HTML
-export function placeholdersToHtml(text: string, map: Map<string, string>): string {
+// Restore placeholders back to HTML with block element restoration
+export function placeholdersToHtml(
+  text: string, 
+  map: Map<string, string>, 
+  blockPlaceholders?: BlockPlaceholder[]
+): string {
   let result = text
   
   // Sort placeholders by length (longest first) to avoid partial replacements
@@ -126,18 +223,57 @@ export function placeholdersToHtml(text: string, map: Map<string, string>): stri
   
   // Clean up any remaining malformed placeholders that weren't in our map
   // This catches cases where the LLM created variations we didn't anticipate
-  result = result.replace(/<\s*\/?\s*[a-z]+_\d+\s*>/gi, (match) => {
+  result = result.replace(/<\s*\/?\s*[a-zA-Z]+_\d+\s*>/gi, (match) => {
     // Try to find a similar placeholder in our map
     const normalizedMatch = match.replace(/\s+/g, '')
+    
+    // Try exact match first
+    if (map.has(normalizedMatch)) {
+      return map.get(normalizedMatch)!
+    }
+    
+    // Try case-insensitive match
     for (const [placeholder, original] of map.entries()) {
       if (placeholder.toLowerCase() === normalizedMatch.toLowerCase()) {
         return original
       }
     }
+    
+    // Try to find partial match (e.g., </td_396> might match </td_39>)
+    const matchPattern = normalizedMatch.match(/<\/?([a-zA-Z]+)_(\d+)>/)
+    if (matchPattern) {
+      const [, tag] = matchPattern
+      const isClosing = normalizedMatch.startsWith('</')
+      
+      // Look for similar tags with different numbers
+      for (const [placeholder, original] of map.entries()) {
+        const placeholderPattern = placeholder.match(/<\/?([a-zA-Z]+)_(\d+)>/)
+        if (placeholderPattern) {
+          const [, pTag] = placeholderPattern
+          const pIsClosing = placeholder.startsWith('</')
+          
+          // Match same tag type and open/close state
+          if (tag.toLowerCase() === pTag.toLowerCase() && isClosing === pIsClosing) {
+            console.warn(`Unmatched placeholder ${match} replaced with ${placeholder}`)
+            return original
+          }
+        }
+      }
+    }
+    
     // If no match found, remove it to avoid displaying broken placeholders
-    console.warn('Unmatched placeholder found:', match)
+    console.warn('Unmatched placeholder found and removed:', match)
     return ''
   })
+  
+  // Restore block placeholders if provided
+  if (blockPlaceholders) {
+    for (const blockInfo of blockPlaceholders) {
+      // Replace the block placeholder with the translated block element's HTML
+      const blockPlaceholderPattern = new RegExp(escapeRegExp(blockInfo.placeholder), 'g')
+      result = result.replace(blockPlaceholderPattern, blockInfo.originalHTML)
+    }
+  }
   
   return result
 }

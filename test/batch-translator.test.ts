@@ -35,12 +35,13 @@ describe('BatchTranslator', () => {
 
   describe('Basic functionality', () => {
     it('should create batches based on character limit', async () => {
-      const translator = new BatchTranslator({ maxCharactersPerBatch: 100 })
+      const translator = new BatchTranslator({ maxCharactersPerBatch: 150 })
       
       // Create test elements
       const elements = [
         createTestElement('Short text'), // ~25 chars with delimiter
-        createTestElement('Another short text'), // ~35 chars with delimiter
+        createTestElement('Another short text'), // ~35 chars with delimiter  
+        createTestElement('Third element'), // ~30 chars with delimiter
         createTestElement('This is a much longer text that should go into the next batch'), // ~80 chars
       ]
       
@@ -53,7 +54,7 @@ describe('BatchTranslator', () => {
       
       // Mock API responses
       vi.mocked(translateText).mockResolvedValueOnce({
-        translatedText: '短いテキスト\n---DELIMITER---\nもう一つの短いテキスト'
+        translatedText: '短いテキスト\n---DELIMITER---\nもう一つの短いテキスト\n---DELIMITER---\n三番目の要素'
       }).mockResolvedValueOnce({
         translatedText: 'これは次のバッチに入るべきもっと長いテキストです'
       })
@@ -63,10 +64,12 @@ describe('BatchTranslator', () => {
       // Should make 2 API calls (2 batches)
       expect(translateText).toHaveBeenCalledTimes(2)
       
-      // First batch should contain first two elements
+      // Batch creation should maximize batch size usage
+      // With 150 char limit, all three short items should fit in first batch
       const firstCall = vi.mocked(translateText).mock.calls[0][0]
       expect(firstCall.text).toContain('Short text')
       expect(firstCall.text).toContain('Another short text')
+      expect(firstCall.text).toContain('Third element')
       expect(firstCall.text).toContain('---DELIMITER---')
       
       // Second batch should contain the long text
@@ -115,7 +118,7 @@ describe('BatchTranslator', () => {
       
       await translator.translateElements([element], settings)
       
-      // Should make direct API call without delimiter
+      // Should make API call (batch processing even for single items)
       expect(translateText).toHaveBeenCalledTimes(1)
       const call = vi.mocked(translateText).mock.calls[0][0]
       expect(call.text).not.toContain('---DELIMITER---')

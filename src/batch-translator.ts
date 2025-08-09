@@ -22,8 +22,8 @@ export interface BatchTranslationConfig {
   batchDelimiter?: string
 }
 
-const DEFAULT_MAX_CHARACTERS = 2000 // Conservative limit for token safety
-const DEFAULT_DELIMITER = '\n---DELIMITER---\n'
+const DEFAULT_MAX_CHARACTERS = 4000 // Maximum safe limit for most models
+const DEFAULT_DELIMITER = '\n---DELIMITER---\n' // 17 characters
 
 export class BatchTranslator {
   private config: Required<BatchTranslationConfig>
@@ -87,30 +87,43 @@ export class BatchTranslator {
     let currentBatch: TranslationItem[] = []
     let currentSize = 0
     
+    // Filter out cached items first
+    const uncachedItems: TranslationItem[] = []
     for (const item of items) {
-      // Check cache first
       const cachedTranslation = translationCache.get(item.placeholderText, settings.targetLanguage)
       if (cachedTranslation) {
         // Apply cached translation immediately
         const restoredHTML = placeholdersToHtml(cachedTranslation, item.placeholderMap)
         item.element.innerHTML = restoredHTML
         item.element.setAttribute('data-translated', 'true')
-        continue
+      } else {
+        uncachedItems.push(item)
       }
+    }
+    
+    // Now batch all uncached items, maximizing batch size utilization
+    // Use TextEncoder to accurately measure byte size
+    const encoder = new TextEncoder()
+    
+    for (const item of uncachedItems) {
+      // Calculate the byte size this item would add to the batch
+      const itemBytes = encoder.encode(item.placeholderText).length
+      const delimiterBytes = currentBatch.length > 0 ? encoder.encode(this.config.batchDelimiter).length : 0
+      const totalItemSize = itemBytes + delimiterBytes
       
-      const itemSize = item.placeholderText.length + this.config.batchDelimiter.length
-      
-      // Check if adding this item would exceed the limit
-      if (currentSize + itemSize > this.config.maxCharactersPerBatch && currentBatch.length > 0) {
+      // Only create new batch if adding this item would exceed the limit
+      // AND we already have items in the current batch
+      if (currentBatch.length > 0 && currentSize + totalItemSize > this.config.maxCharactersPerBatch) {
         batches.push(currentBatch)
         currentBatch = []
         currentSize = 0
       }
       
       currentBatch.push(item)
-      currentSize += itemSize
+      currentSize += totalItemSize
     }
     
+    // Add the last batch
     if (currentBatch.length > 0) {
       batches.push(currentBatch)
     }
@@ -121,11 +134,8 @@ export class BatchTranslator {
   private async processBatch(batch: TranslationItem[], settings: TranslationSettings): Promise<void> {
     if (batch.length === 0) return
     
-    // Single item batch - process directly
-    if (batch.length === 1) {
-      await this.processSingleItem(batch[0], settings)
-      return
-    }
+    // Always use batch processing, even for single items
+    // This ensures all elements go through the same pipeline
     
     // Create batch text
     const batchText = batch.map(item => item.placeholderText).join(this.config.batchDelimiter)
