@@ -149,9 +149,10 @@ export function getTranslatableElements(root: Element = document.body): Element[
     )
     
     const textNodes: Node[] = []
-    let node
-    while (node = walker.nextNode()) {
+    let node = walker.nextNode()
+    while (node) {
       textNodes.push(node)
+      node = walker.nextNode()
     }
     
     
