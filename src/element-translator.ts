@@ -68,12 +68,20 @@ export async function translateElement(element: Element, settings: TranslationSe
 // Get translatable elements from the page
 export function getTranslatableElements(root: Element = document.body): Element[] {
   const elements: Element[] = []
+  const isNamuWiki = window.location.hostname.includes('namu.wiki')
   
   // Select content elements that typically contain translatable text
   const selectors = [
     'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
     'li', 'td', 'th', 'blockquote', 'figcaption',
-    'dd', 'dt', '.text', '.content', '[class*="text"]'
+    'dd', 'dt', '.text', '.content', '[class*="text"]',
+    // Add div selectors for wiki content
+    'div.wiki-paragraph', 'div.wiki-paragraph-indent', 
+    'div[class*="wiki-heading"]', 'div[class*="wiki-table"]',
+    'div.wiki-paragraph > div', 'div[itemprop="articleBody"] > div',
+    // Namu wiki specific selectors
+    '.w > div', '.wiki-inner-content > div',
+    'div[class^="wiki-"]', 'div[class*=" wiki-"]'
   ]
   
   const candidates = root.querySelectorAll(selectors.join(','))
@@ -87,6 +95,16 @@ export function getTranslatableElements(root: Element = document.body): Element[
     // Skip UI elements
     if (element.closest('nav, header, footer, button, input, select, textarea, [role="navigation"], [role="button"], [role="menu"]')) {
       return
+    }
+    
+    // Special handling for namu.wiki - allow some nested elements
+    if (isNamuWiki && element.classList.contains('wiki-paragraph')) {
+      // For wiki-paragraph, don't skip even if it has nested elements
+      const text = element.textContent?.trim()
+      if (text && text.length >= 10) {
+        elements.push(element)
+        return
+      }
     }
     
     // Skip if contains nested block elements (process leaves instead)
@@ -103,6 +121,61 @@ export function getTranslatableElements(root: Element = document.body): Element[
     
     elements.push(element)
   })
+  
+  // If namu.wiki and found too few elements, try alternative approach
+  if (isNamuWiki && elements.length < 5) {
+    
+    // Find all text nodes and their parent elements
+    const walker = document.createTreeWalker(
+      root,
+      NodeFilter.SHOW_TEXT,
+      {
+        acceptNode: function(node) {
+          const text = node.textContent?.trim() || ''
+          // Skip short text and whitespace
+          if (text.length < 10) return NodeFilter.FILTER_REJECT
+          // Skip if parent is script or style
+          const parent = node.parentElement
+          if (!parent || parent.tagName === 'SCRIPT' || parent.tagName === 'STYLE') {
+            return NodeFilter.FILTER_REJECT
+          }
+          // Skip UI elements
+          if (parent.closest('nav, header, footer, button, input, select, textarea, [role="navigation"], [role="button"], [role="menu"]')) {
+            return NodeFilter.FILTER_REJECT
+          }
+          return NodeFilter.FILTER_ACCEPT
+        }
+      }
+    )
+    
+    const textNodes: Node[] = []
+    let node
+    while (node = walker.nextNode()) {
+      textNodes.push(node)
+    }
+    
+    
+    // Group text nodes by their closest block parent
+    const blockParents = new Map<Element, Node[]>()
+    textNodes.forEach(textNode => {
+      const blockParent = textNode.parentElement?.closest('div, p, li, td, th, h1, h2, h3, h4, h5, h6, blockquote, dd, dt')
+      if (blockParent && !blockParent.hasAttribute('data-translated')) {
+        if (!blockParents.has(blockParent)) {
+          blockParents.set(blockParent, [])
+        }
+        blockParents.get(blockParent)!.push(textNode)
+      }
+    })
+    
+    
+    // Add block parents that contain significant text
+    blockParents.forEach((nodes, parent) => {
+      const combinedText = nodes.map(n => n.textContent?.trim()).join(' ')
+      if (combinedText.length >= 10 && !elements.includes(parent)) {
+        elements.push(parent)
+      }
+    })
+  }
   
   return elements
 }
