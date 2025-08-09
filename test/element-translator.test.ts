@@ -60,7 +60,7 @@ describe('Element Translator', () => {
 
     it('should skip elements with short text', () => {
       document.body.innerHTML = `
-        <p>Short</p>
+        <p>Hi</p>
         <p>This is a longer paragraph with enough content</p>
       `
 

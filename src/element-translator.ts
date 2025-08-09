@@ -73,7 +73,16 @@ export function getTranslatableElements(root: Element = document.body): Element[
   const selectors = [
     'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
     'li', 'td', 'th', 'blockquote', 'figcaption',
-    'dd', 'dt', '.text', '.content', '[class*="text"]'
+    'dd', 'dt', '.text', '.content', '[class*="text"]',
+    'div[class*="content"]', 'div[class*="article"]', 'div[class*="wiki"]',
+    'div[class*="body"]', 'div[class*="main"]', 'div[class*="paragraph"]',
+    'span[class*="text"]', 'span[class*="content"]',
+    // Common wiki/documentation selectors
+    '.wiki-paragraph', '.wiki-heading', '.wiki-content',
+    '.document-content', '.article-body', '.entry-content',
+    // Namu wiki specific
+    '[class*="wiki-paragraph"]', '[class*="wiki-heading"]',
+    '[class*="w-"]', '.wiki-table-wrapper td', '.wiki-table-wrapper th'
   ]
   
   const candidates = root.querySelectorAll(selectors.join(','))
@@ -89,15 +98,28 @@ export function getTranslatableElements(root: Element = document.body): Element[
       return
     }
     
-    // Skip if contains nested block elements (process leaves instead)
+    // Skip if contains many nested block elements (likely a container)
+    // But allow elements with a few nested elements (like div with spans)
     const blockElements = element.querySelectorAll('p, div, section, article, h1, h2, h3, h4, h5, h6')
-    if (blockElements.length > 0) {
+    if (blockElements.length > 3) {
+      return
+    }
+    
+    // Skip if the element is too large (likely a container)
+    const elementText = element.textContent?.trim() || ''
+    if (elementText.length > 5000) {
       return
     }
     
     // Check if has meaningful text content
     const text = element.textContent?.trim()
-    if (!text || text.length < 10) {
+    if (!text || text.length < 5) {
+      return
+    }
+    
+    // Skip if text is mostly numbers or special characters
+    const letterCount = (text.match(/[\p{L}]/gu) || []).length
+    if (letterCount < text.length * 0.3) {
       return
     }
     
