@@ -1,5 +1,19 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
+// Mock BatchTranslator
+vi.mock('../src/batch-translator', () => ({
+  BatchTranslator: vi.fn().mockImplementation(() => ({
+    translateElements: vi.fn(async (elements, settings) => {
+      // Simulate batch translation
+      for (const element of elements) {
+        element.innerHTML = '翻訳されたテキスト'
+        element.setAttribute('data-translated', 'true')
+        element.setAttribute('data-original-html', element.innerHTML)
+      }
+    })
+  }))
+}))
+
 // Mock IntersectionObserver
 class MockIntersectionObserver {
   callback: IntersectionObserverCallback

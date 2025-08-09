@@ -1,6 +1,7 @@
 // Content script for AI Translation Extension
 
 import { translateElement, getTranslatableElements } from './element-translator'
+import { BatchTranslator } from './batch-translator'
 
 interface TranslationSettings {
   apiEndpoint: string
@@ -8,6 +9,7 @@ interface TranslationSettings {
   model: string
   targetLanguage: string
   viewportTranslation?: boolean
+  batchSize?: number
 }
 
 // Translation state
@@ -117,7 +119,8 @@ async function translatePage() {
       'apiKey',
       'model',
       'targetLanguage',
-      'viewportTranslation'
+      'viewportTranslation',
+      'batchSize'
     ])
 
     if (!storageData.apiKey) {
@@ -129,7 +132,8 @@ async function translatePage() {
       apiKey: storageData.apiKey,
       model: storageData.model || 'gpt-4.1-nano',
       targetLanguage: storageData.targetLanguage || 'Japanese',
-      viewportTranslation: storageData.viewportTranslation
+      viewportTranslation: storageData.viewportTranslation,
+      batchSize: storageData.batchSize || 2000
     }
 
     // Clean up existing observer
@@ -172,25 +176,23 @@ async function translatePage() {
         return rect.top < window.innerHeight && rect.bottom > 0
       })
       
-      // Process visible elements in batches
-      const BATCH_SIZE = 5
-      for (let i = 0; i < visibleElements.length; i += BATCH_SIZE) {
-        const batch = visibleElements.slice(i, i + BATCH_SIZE)
-        await Promise.all(
-          batch.map(element => {
-            const translateFunc = pendingTranslations.get(element)
-            if (translateFunc) {
-              pendingTranslations.delete(element)
-              return translateFunc()
-            }
-          })
-        )
-        
-        // Update progress
-        if (progressIndicator) {
-          progressIndicator.textContent = `Translating visible content... (${Math.min(i + BATCH_SIZE, visibleElements.length)}/${visibleElements.length})`
-        }
+      // Use batch translator for visible elements
+      const batchTranslator = new BatchTranslator({
+        maxCharactersPerBatch: settings.batchSize
+      })
+      
+      // Update progress
+      if (progressIndicator) {
+        progressIndicator.textContent = `Translating visible content... (${visibleElements.length} elements)`
       }
+      
+      await batchTranslator.translateElements(visibleElements, settings)
+      
+      // Mark translated elements
+      visibleElements.forEach(element => {
+        translatedElements.add(element)
+        pendingTranslations.delete(element)
+      })
       
       hideProgress()
       
@@ -203,31 +205,27 @@ async function translatePage() {
       return { status: 'completed', translatedCount: visibleElements.length, totalElements: observedCount }
       
     } else {
-      // Full-page translation using element-based approach
+      // Full-page translation using batch translator
       const translatableElements = getTranslatableElements()
       
       if (translatableElements.length === 0) {
         throw new Error('No translatable content found on this page')
       }
 
-      const BATCH_SIZE = 5
-      let translatedCount = 0
-
-      for (let i = 0; i < translatableElements.length; i += BATCH_SIZE) {
-        const batch = translatableElements.slice(i, Math.min(i + BATCH_SIZE, translatableElements.length))
-        
-        if (progressIndicator) {
-          progressIndicator.textContent = `Translating... (${translatedCount + 1}-${Math.min(translatedCount + batch.length, translatableElements.length)}/${translatableElements.length})`
-        }
-
-        const promises = batch.map(element => translateElement(element, settings))
-        await Promise.all(promises)
-        translatedCount += batch.length
+      // Use batch translator
+      const batchTranslator = new BatchTranslator({
+        maxCharactersPerBatch: settings.batchSize
+      })
+      
+      if (progressIndicator) {
+        progressIndicator.textContent = `Translating... (${translatableElements.length} elements)`
       }
+
+      await batchTranslator.translateElements(translatableElements, settings)
 
       hideProgress()
       chrome.runtime.sendMessage({ action: 'updateBadge', status: 'completed' })
-      return { status: 'completed', translatedCount }
+      return { status: 'completed', translatedCount: translatableElements.length }
     }
 
   } catch (error) {
