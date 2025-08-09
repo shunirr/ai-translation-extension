@@ -40,7 +40,7 @@ async function loadSettings() {
   if (settings.apiRps !== undefined) {
     apiRpsInput.value = settings.apiRps.toString()
   } else {
-    apiRpsInput.value = '0.5' // Default to 0.5 RPS
+    apiRpsInput.value = '0.9' // Default to 0.9 RPS
   }
   if (settings.batchSize !== undefined) {
     batchSizeInput.value = settings.batchSize.toString()
@@ -59,9 +59,9 @@ async function saveSettings() {
   const settings = {
     apiEndpoint: apiEndpointInput.value || 'https://api.openai.com/v1/chat/completions',
     apiKey: apiKeyInput.value,
-    model: modelInput.value || 'gpt-4.1-nano',
+    model: modelInput.value || 'gpt-4.1-mini',
     targetLanguage: targetLanguageInput.value || 'Japanese',
-    apiRps: parseFloat(apiRpsInput.value) || 0.5,
+    apiRps: parseFloat(apiRpsInput.value) || 0.9,
     batchSize: parseInt(batchSizeInput.value) || 2000,
     viewportTranslation: viewportTranslationCheckbox.checked
   }

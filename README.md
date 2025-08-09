@@ -77,8 +77,10 @@ After installing the extension, click on the extension icon to configure:
 
 - **API Endpoint**: The LLM API endpoint (default: `https://api.openai.com/v1/chat/completions`)
 - **API Key**: Your API key for authentication
-- **Model**: The model to use (default: `gpt-4.1-nano`)
+- **Model**: The model to use (default: `gpt-4.1-mini`)
 - **Target Language**: The language to translate to (default: `Japanese`)
+- **API Rate Limit**: Requests per second limit (default: `0.9 RPS`)
+- **Batch Size**: Maximum characters per batch request (default: `2000`)
 
 ## Usage
 
@@ -124,6 +126,8 @@ The extension consists of several key components:
 - **Progress Indication**: Shows translation progress with badge and notifications
 - **Error Handling**: Displays clear error messages when translation fails
 - **State Preservation**: Original content stored in `data-*` attributes
+- **Batch Translation**: Groups multiple elements into single API requests for efficiency
+- **Rate Limiting**: Configurable requests per second to respect API limits
 
 ## Development Guidelines
 
@@ -149,7 +153,9 @@ npm run build     # Ensure build succeeds
 ├── api.ts                  # LLM API wrapper
 ├── cache.ts                # LRU cache implementation
 ├── utils.ts                # Utility functions
-└── element-translator.ts   # Element-based translation logic
+├── element-translator.ts   # Element-based translation logic
+├── batch-translator.ts     # Batch translation coordinator
+└── rate-limiter.ts         # API rate limiting implementation
 
 /test
 ├── *.test.ts               # Test files for each module

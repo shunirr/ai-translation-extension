@@ -168,7 +168,7 @@ async function translatePage() {
     const settings: TranslationSettings = {
       apiEndpoint: storageData.apiEndpoint || 'https://api.openai.com/v1/chat/completions',
       apiKey: storageData.apiKey,
-      model: storageData.model || 'gpt-4.1-nano',
+      model: storageData.model || 'gpt-4.1-mini',
       targetLanguage: storageData.targetLanguage || 'Japanese',
       viewportTranslation: storageData.viewportTranslation,
       batchSize: storageData.batchSize || 2000

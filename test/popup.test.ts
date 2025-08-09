@@ -20,7 +20,7 @@ const mockElements = {
   apiKey: { value: '', addEventListener: vi.fn() } as any,
   model: { value: '', addEventListener: vi.fn() } as any,
   targetLanguage: { value: 'Japanese', addEventListener: vi.fn() } as any,
-  apiRps: { value: '0.5', addEventListener: vi.fn() } as any,
+  apiRps: { value: '0.9', addEventListener: vi.fn() } as any,
   batchSize: { value: '2000', addEventListener: vi.fn() } as any,
   viewportTranslation: { checked: true, addEventListener: vi.fn() } as any,
   saveSettings: { addEventListener: vi.fn() } as any,
@@ -55,7 +55,7 @@ describe('Popup', () => {
     mockElements.apiKey.value = ''
     mockElements.model.value = ''
     mockElements.targetLanguage.value = 'ja'
-    mockElements.apiRps.value = '0.5'
+    mockElements.apiRps.value = '0.9'
     mockElements.batchSize.value = '2000'
     mockElements.viewportTranslation.checked = true
     mockElements.status.textContent = ''
@@ -133,7 +133,7 @@ describe('Popup', () => {
         apiKey: 'new-key',
         model: 'gpt-4',
         targetLanguage: 'Japanese',
-        apiRps: 0.5,
+        apiRps: 0.9,
         batchSize: 2000,
         viewportTranslation: true
       })
@@ -157,9 +157,9 @@ describe('Popup', () => {
       expect(chrome.storage.local.set).toHaveBeenCalledWith({
         apiEndpoint: 'https://api.openai.com/v1/chat/completions',
         apiKey: 'some-key',
-        model: 'gpt-4.1-nano',
+        model: 'gpt-4.1-mini',
         targetLanguage: 'ja',
-        apiRps: 0.5,
+        apiRps: 0.9,
         batchSize: 2000,
         viewportTranslation: true
       })
