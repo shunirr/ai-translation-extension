@@ -46,7 +46,18 @@ export async function translateText(request: TranslationRequest): Promise<Transl
   
   const targetLanguageName = languageNames[targetLanguage as keyof typeof languageNames] || targetLanguage
   
-  const systemPrompt = `You are a professional translator. Translate the given text to ${targetLanguageName}. 
+  // Check if this is a batch request
+  const isBatch = text.includes('\n---DELIMITER---\n')
+  
+  const systemPrompt = isBatch 
+    ? `You are a professional translator. Translate each text segment to ${targetLanguageName}. 
+The input contains multiple text segments separated by "---DELIMITER---".
+You must:
+1. Translate each segment independently
+2. Preserve the exact delimiter "---DELIMITER---" between translations
+3. Preserve all HTML placeholders in the format <tag_n> exactly as they appear
+4. Return only the translations with delimiters, no explanations`
+    : `You are a professional translator. Translate the given text to ${targetLanguageName}. 
 Preserve all HTML placeholders in the format <tag_n> exactly as they appear in the input.
 Only return the translated text without any explanation.`
   

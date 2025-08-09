@@ -1,6 +1,7 @@
 // Content script for AI Translation Extension
 
-import { translateElement, getTranslatableElements } from './element-translator'
+import { getTranslatableElements } from './element-translator'
+import { BatchTranslator } from './batch-translator'
 
 interface TranslationSettings {
   apiEndpoint: string
@@ -8,6 +9,7 @@ interface TranslationSettings {
   model: string
   targetLanguage: string
   viewportTranslation?: boolean
+  batchSize?: number
 }
 
 // Translation state
@@ -78,18 +80,56 @@ function showError(message: string) {
 }
 
 // Create intersection observer for viewport-based translation
-function createTranslationObserver(_settings: TranslationSettings): IntersectionObserver {
+function createTranslationObserver(settings: TranslationSettings): IntersectionObserver {
+  const batchTranslator = new BatchTranslator({
+    maxCharactersPerBatch: settings.batchSize
+  })
+  
+  let pendingElements: Element[] = []
+  let batchTimeout: NodeJS.Timeout | null = null
+  
+  const processPendingBatch = async () => {
+    if (pendingElements.length === 0) return
+    
+    const elementsToTranslate = [...pendingElements]
+    pendingElements = []
+    
+    try {
+      await batchTranslator.translateElements(elementsToTranslate, settings)
+    } catch (error) {
+      // On error, remove from translatedElements so it can be retried
+      elementsToTranslate.forEach(element => {
+        translatedElements.delete(element)
+      })
+      console.error('Batch translation error:', error)
+    }
+  }
+  
   return new IntersectionObserver(
     (entries) => {
+      const newVisibleElements: Element[] = []
+      
       entries.forEach(entry => {
-        if (entry.isIntersecting && !translatedElements.has(entry.target)) {
-          const translateFunc = pendingTranslations.get(entry.target)
-          if (translateFunc) {
-            translateFunc()
-            pendingTranslations.delete(entry.target)
-          }
+        if (entry.isIntersecting && 
+            !translatedElements.has(entry.target) && 
+            !entry.target.hasAttribute('data-translated')) {
+          newVisibleElements.push(entry.target)
+          // Mark as pending to prevent duplicate processing
+          translatedElements.add(entry.target)
         }
       })
+      
+      if (newVisibleElements.length > 0) {
+        pendingElements.push(...newVisibleElements)
+        
+        // Clear existing timeout
+        if (batchTimeout) clearTimeout(batchTimeout)
+        
+        // Wait 100ms to collect more elements before processing
+        batchTimeout = setTimeout(() => {
+          processPendingBatch()
+        }, 100)
+      }
     },
     {
       rootMargin: '50px', // Start translating 50px before element comes into view
@@ -117,7 +157,8 @@ async function translatePage() {
       'apiKey',
       'model',
       'targetLanguage',
-      'viewportTranslation'
+      'viewportTranslation',
+      'batchSize'
     ])
 
     if (!storageData.apiKey) {
@@ -129,7 +170,8 @@ async function translatePage() {
       apiKey: storageData.apiKey,
       model: storageData.model || 'gpt-4.1-nano',
       targetLanguage: storageData.targetLanguage || 'Japanese',
-      viewportTranslation: storageData.viewportTranslation
+      viewportTranslation: storageData.viewportTranslation,
+      batchSize: storageData.batchSize || 2000
     }
 
     // Clean up existing observer
@@ -151,17 +193,7 @@ async function translatePage() {
       const translatableElements = getTranslatableElements()
       
       translatableElements.forEach(element => {
-        // Create translation function
-        pendingTranslations.set(element, async () => {
-          try {
-            await translateElement(element, settings)
-            translatedElements.add(element)
-          } catch (error) {
-            console.error('Translation error for element:', error)
-          }
-        })
-        
-        // Observe element
+        // Just observe element without setting up individual translation
         translationObserver!.observe(element)
         observedCount++
       })
@@ -172,25 +204,23 @@ async function translatePage() {
         return rect.top < window.innerHeight && rect.bottom > 0
       })
       
-      // Process visible elements in batches
-      const BATCH_SIZE = 5
-      for (let i = 0; i < visibleElements.length; i += BATCH_SIZE) {
-        const batch = visibleElements.slice(i, i + BATCH_SIZE)
-        await Promise.all(
-          batch.map(element => {
-            const translateFunc = pendingTranslations.get(element)
-            if (translateFunc) {
-              pendingTranslations.delete(element)
-              return translateFunc()
-            }
-          })
-        )
-        
-        // Update progress
-        if (progressIndicator) {
-          progressIndicator.textContent = `Translating visible content... (${Math.min(i + BATCH_SIZE, visibleElements.length)}/${visibleElements.length})`
-        }
+      // Use batch translator for visible elements
+      const batchTranslator = new BatchTranslator({
+        maxCharactersPerBatch: settings.batchSize
+      })
+      
+      // Update progress
+      if (progressIndicator) {
+        progressIndicator.textContent = `Translating visible content... (${visibleElements.length} elements)`
       }
+      
+      await batchTranslator.translateElements(visibleElements, settings)
+      
+      // Mark translated elements
+      visibleElements.forEach(element => {
+        translatedElements.add(element)
+        pendingTranslations.delete(element)
+      })
       
       hideProgress()
       
@@ -203,31 +233,27 @@ async function translatePage() {
       return { status: 'completed', translatedCount: visibleElements.length, totalElements: observedCount }
       
     } else {
-      // Full-page translation using element-based approach
+      // Full-page translation using batch translator
       const translatableElements = getTranslatableElements()
       
       if (translatableElements.length === 0) {
         throw new Error('No translatable content found on this page')
       }
 
-      const BATCH_SIZE = 5
-      let translatedCount = 0
-
-      for (let i = 0; i < translatableElements.length; i += BATCH_SIZE) {
-        const batch = translatableElements.slice(i, Math.min(i + BATCH_SIZE, translatableElements.length))
-        
-        if (progressIndicator) {
-          progressIndicator.textContent = `Translating... (${translatedCount + 1}-${Math.min(translatedCount + batch.length, translatableElements.length)}/${translatableElements.length})`
-        }
-
-        const promises = batch.map(element => translateElement(element, settings))
-        await Promise.all(promises)
-        translatedCount += batch.length
+      // Use batch translator
+      const batchTranslator = new BatchTranslator({
+        maxCharactersPerBatch: settings.batchSize
+      })
+      
+      if (progressIndicator) {
+        progressIndicator.textContent = `Translating... (${translatableElements.length} elements)`
       }
+
+      await batchTranslator.translateElements(translatableElements, settings)
 
       hideProgress()
       chrome.runtime.sendMessage({ action: 'updateBadge', status: 'completed' })
-      return { status: 'completed', translatedCount }
+      return { status: 'completed', translatedCount: translatableElements.length }
     }
 
   } catch (error) {

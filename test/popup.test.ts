@@ -21,6 +21,7 @@ const mockElements = {
   model: { value: '', addEventListener: vi.fn() } as any,
   targetLanguage: { value: 'Japanese', addEventListener: vi.fn() } as any,
   apiRps: { value: '0.5', addEventListener: vi.fn() } as any,
+  batchSize: { value: '2000', addEventListener: vi.fn() } as any,
   viewportTranslation: { checked: true, addEventListener: vi.fn() } as any,
   saveSettings: { addEventListener: vi.fn() } as any,
   translatePage: { addEventListener: vi.fn() } as any,
@@ -36,6 +37,7 @@ document.getElementById = vi.fn((id: string) => {
     'model': mockElements.model,
     'target-language': mockElements.targetLanguage,
     'api-rps': mockElements.apiRps,
+    'batch-size': mockElements.batchSize,
     'viewport-translation': mockElements.viewportTranslation,
     'save-settings': mockElements.saveSettings,
     'translate-page': mockElements.translatePage,
@@ -54,6 +56,7 @@ describe('Popup', () => {
     mockElements.model.value = ''
     mockElements.targetLanguage.value = 'ja'
     mockElements.apiRps.value = '0.5'
+    mockElements.batchSize.value = '2000'
     mockElements.viewportTranslation.checked = true
     mockElements.status.textContent = ''
     mockElements.status.className = 'status'
@@ -86,6 +89,7 @@ describe('Popup', () => {
         'model',
         'targetLanguage',
         'apiRps',
+        'batchSize',
         'viewportTranslation'
       ])
       
@@ -130,6 +134,7 @@ describe('Popup', () => {
         model: 'gpt-4',
         targetLanguage: 'Japanese',
         apiRps: 0.5,
+        batchSize: 2000,
         viewportTranslation: true
       })
       
@@ -155,6 +160,7 @@ describe('Popup', () => {
         model: 'gpt-4.1-nano',
         targetLanguage: 'ja',
         apiRps: 0.5,
+        batchSize: 2000,
         viewportTranslation: true
       })
     })
