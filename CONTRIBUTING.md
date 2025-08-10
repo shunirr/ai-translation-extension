@@ -45,8 +45,8 @@ Please follow these steps to have your contribution considered:
 
 1. Clone the repository
    ```bash
-   git clone https://github.com/[username]/chrome-extension-openai-translation.git
-   cd chrome-extension-openai-translation
+   git clone https://github.com/[username]/ai-translation-extension.git
+   cd ai-translation-extension
    ```
 
 2. Install dependencies
@@ -55,7 +55,7 @@ Please follow these steps to have your contribution considered:
    npm install   # Install npm dependencies
    ```
 
-3. Create a new branch
+3. Create a new branch (ALWAYS use feature branches)
    ```bash
    git checkout -b feature/your-feature-name
    ```
@@ -68,8 +68,8 @@ Please follow these steps to have your contribution considered:
 
 5. Check code quality
    ```bash
-   npm run lint              # Check ESLint
-   npx tsc --noEmit         # Check TypeScript
+   npm run lint              # Check ESLint v9
+   npm run typecheck        # Check TypeScript
    npm run build            # Ensure build succeeds
    npm run test:coverage    # Check test coverage (aim for >60%)
    ```
@@ -101,6 +101,8 @@ Please follow these steps to have your contribution considered:
 
 ### Commit Messages
 
+* Use conventional commit format: `type: description`
+* Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
 * Use the present tense ("Add feature" not "Added feature")
 * Use the imperative mood ("Move cursor to..." not "Moves cursor to...")
 * Limit the first line to 72 characters or less
@@ -108,11 +110,11 @@ Please follow these steps to have your contribution considered:
 
 Example:
 ```
-Add viewport-based translation for large pages
+feat: Add Smart Translation for viewport-based translation
 
 - Implement Intersection Observer for visible elements
-- Add toggle option in popup UI
-- Automatically enable for pages > 50,000 characters
+- Always enabled for better performance
+- Translates content as user scrolls
 
 Fixes #123
 ```
@@ -136,7 +138,9 @@ Fixes #123
 ├── api.ts                  # LLM API wrapper
 ├── cache.ts                # LRU cache implementation
 ├── utils.ts                # Utility functions
-└── element-translator.ts   # Element-based translation logic
+├── element-translator.ts   # Element-based translation logic
+├── batch-translator.ts     # Batch translation coordinator
+└── rate-limiter.ts         # API rate limiting implementation
 
 /test
 ├── *.test.ts               # Test files for each module

@@ -4,6 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Please talk in Japanese, But write code-comments in English.
 
+## Project Overview
+
+This is a Chrome extension for translating web pages using LLM APIs compatible with the OpenAI GPT protocol. The extension focuses on:
+- Preserving HTML structure during translation
+- Smart Translation: viewport-based translation that translates content as it becomes visible
+- Efficient batch processing with configurable rate limiting
+- LRU caching to minimize API calls
+
 ## Development policy
 
 - Do not use mock, do not use demo mode. WE WANT TO WRITE THE REAL WORKING CODE.
@@ -83,35 +91,36 @@ Do not use mock, do not use demo mode. WE WANT TO WRITE THE REAL WORKING CODE.
 
 ### Initial Setup
 ```bash
-npm install
+mise install         # Install Node.js version specified in .mise.toml
+npm install          # Install dependencies
 ```
 
 ### Build
 ```bash
-npm run build        # Production build
-npm run dev          # Development build with watch mode
+npm run build        # Production build (TypeScript + Vite)
+npm run dev          # Development build with watch mode and hot reload
 ```
 
 ### Test
 ```bash
-npm test             # Run all tests
+npm test             # Run all tests with Vitest
 npm run test:watch   # Run tests in watch mode
+npm run test:coverage # Run tests with coverage report
 ```
 
-### Development
+### Code Quality
 ```bash
-npm run dev          # Start development server with hot reload
+npm run lint         # Run ESLint v9 with flat config
+npm run typecheck    # Run TypeScript type checking (tsc --noEmit)
 ```
 
-### Linting and Type Checking
+### Chrome Extension Development
 ```bash
-npm run lint         # Run ESLint
-npm run typecheck    # Run TypeScript type checking
+npm run build        # Build extension to dist/
+# Then load dist/ as unpacked extension in Chrome
 ```
 
 ## Architecture Overview
-
-This is a Chrome extension for translating web pages powered by LLMs via APIs compatible with the OpenAI GPT protocol, built with TypeScript and Vite.
 
 ### Core Components
 
@@ -149,14 +158,18 @@ This is a Chrome extension for translating web pages powered by LLMs via APIs co
 ### Key Design Decisions
 
 - **No frameworks**: Pure TypeScript with DOM APIs for minimal bundle size
-- **Manifest V3**: Future-proof extension architecture
+- **Manifest V3**: Future-proof extension architecture  
 - **Structure preservation**: Translates content while maintaining HTML structure using placeholder abstraction
-- **Progressive translation**: Handles large pages by processing text in clusters
+- **Smart Translation**: Always uses viewport-based translation for better performance
 - **State management**: Uses data-* attributes to store original content for restoration
+- **Rate limiting**: Configurable RPS (default: 0.9) to respect API limits
+- **Batch processing**: Groups translations up to 1000 characters per request
 
 ### Development Notes
 
-- The extension targets Chrome primarily but maintains compatibility with Edge and Firefox
+- The extension targets Chrome primarily but maintains compatibility with Edge
 - All translations are performed via LLM APIs with configurable endpoints compatible with OpenAI GPT protocol
+- Default model: gpt-4.1-nano, Default batch size: 1000 characters
 - The extension never auto-translates; all actions are user-initiated
 - Error states are communicated via icon badges and visual indicators
+- Context menu dynamically shows "AI Translation: [Language]" based on settings
