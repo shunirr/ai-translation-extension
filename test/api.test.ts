@@ -78,8 +78,7 @@ describe('API', () => {
       vi.mocked(global.fetch).mockResolvedValueOnce({
         ok: false,
         status: 401,
-        statusText: 'Unauthorized',
-        json: async () => Promise.reject(new Error('No JSON body'))
+        statusText: 'Unauthorized'
       } as Response)
 
       const result = await translateText(baseRequest)
