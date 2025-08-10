@@ -93,7 +93,10 @@ Only return the translated text.`
           { role: 'user', content: text }
         ],
         temperature: 0.3,
-        max_tokens: 4000
+        // Use max_completion_tokens for newer models, max_tokens for legacy
+        ...(model.toLowerCase().includes('gpt-5') 
+          ? { max_completion_tokens: 4000 }
+          : { max_tokens: 4000 })
       })
     }))
     

@@ -129,7 +129,7 @@ describe('API', () => {
       expect(body.model).toBe('gpt-4')
       expect(body.messages[1].content).toBe('Text with <strong_0>placeholder</strong_0>')
       expect(body.temperature).toBe(0.3)
-      expect(body.max_tokens).toBe(4000)
+      expect(body.max_tokens).toBe(4000) // GPT-4 uses max_tokens
     })
 
     it('should handle custom API endpoints', async () => {
