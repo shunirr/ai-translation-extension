@@ -62,10 +62,10 @@ describe('Background Script', () => {
   })
 
   describe('Installation', () => {
-    it('should create context menu with dynamic language title on install', async () => {
+    it('should create context menu with raw language string on install', async () => {
       // Mock storage to return Japanese as target language
       vi.mocked(chrome.storage.local.get).mockResolvedValue({ 
-        targetLanguage: 'ja',
+        targetLanguage: 'Japanese',
         apiRps: 0.5
       })
       
@@ -81,10 +81,10 @@ describe('Background Script', () => {
       })
     })
 
-    it('should use custom language code if not in predefined list', async () => {
-      // Mock storage to return a custom language
+    it('should use exact string from storage', async () => {
+      // Mock storage to return a custom string
       vi.mocked(chrome.storage.local.get).mockResolvedValue({ 
-        targetLanguage: 'custom-lang',
+        targetLanguage: '日本語',
         apiRps: 0.5
       })
       
@@ -102,7 +102,7 @@ describe('Background Script', () => {
 
       expect(chrome.contextMenus.create).toHaveBeenCalledWith({
         id: 'translate-page',
-        title: 'AI Translation: custom-lang',
+        title: 'AI Translation: 日本語',
         contexts: ['page'],
       })
     })

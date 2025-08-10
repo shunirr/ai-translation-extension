@@ -57,21 +57,21 @@ describe('Background Script - Storage Changes', () => {
   it('should update context menu when target language changes', async () => {
     // Mock initial storage
     vi.mocked(chrome.storage.local.get).mockResolvedValue({ 
-      targetLanguage: 'ja',
+      targetLanguage: 'Japanese',
       apiRps: 0.5 
     })
     
     await import('../src/background')
     
-    // Simulate language change to Korean
+    // Simulate language change to raw string
     vi.mocked(chrome.storage.local.get).mockResolvedValue({ 
-      targetLanguage: 'ko'
+      targetLanguage: '한국어'
     })
     
     const changes = {
       targetLanguage: {
-        oldValue: 'ja',
-        newValue: 'ko'
+        oldValue: 'Japanese',
+        newValue: '한국어'
       }
     }
     
@@ -81,7 +81,7 @@ describe('Background Script - Storage Changes', () => {
     await new Promise(resolve => setTimeout(resolve, 0))
     
     expect(chrome.contextMenus.update).toHaveBeenCalledWith('translate-page', {
-      title: 'AI Translation: Korean'
+      title: 'AI Translation: 한국어'
     })
   })
 
@@ -106,15 +106,15 @@ describe('Background Script - Storage Changes', () => {
     const { configureApi } = await import('../src/api')
     
     vi.mocked(chrome.storage.local.get).mockResolvedValue({ 
-      targetLanguage: 'en'
+      targetLanguage: 'English'
     })
     
     await import('../src/background')
     
     const changes = {
       targetLanguage: {
-        oldValue: 'ja',
-        newValue: 'en'
+        oldValue: 'Japanese',
+        newValue: 'English'
       },
       apiRps: {
         oldValue: 0.5,
@@ -138,8 +138,8 @@ describe('Background Script - Storage Changes', () => {
     
     const changes = {
       targetLanguage: {
-        oldValue: 'ja',
-        newValue: 'en'
+        oldValue: 'Japanese',
+        newValue: 'English'
       }
     }
     

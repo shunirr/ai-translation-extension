@@ -2,34 +2,14 @@
 
 import { configureApi } from './api'
 
-// Helper function to get language display name
-function getLanguageDisplayName(languageCode: string): string {
-  const languageNames: Record<string, string> = {
-    'ja': 'Japanese',
-    'en': 'English',
-    'ko': 'Korean',
-    'zh': 'Chinese',
-    'es': 'Spanish',
-    'fr': 'French',
-    'de': 'German',
-    'it': 'Italian',
-    'pt': 'Portuguese',
-    'ru': 'Russian',
-    'ar': 'Arabic',
-    'hi': 'Hindi'
-  }
-  return languageNames[languageCode] || languageCode
-}
-
 // Helper function to update context menu title
 async function updateContextMenuTitle() {
   const settings = await chrome.storage.local.get(['targetLanguage'])
-  const targetLanguage = settings.targetLanguage || 'ja'
-  const languageName = getLanguageDisplayName(targetLanguage)
+  const targetLanguage = settings.targetLanguage || 'Japanese'
   
-  // Update the context menu
+  // Update the context menu with the exact string from settings
   chrome.contextMenus.update('translate-page', {
-    title: `AI Translation: ${languageName}`
+    title: `AI Translation: ${targetLanguage}`
   })
 }
 
@@ -38,13 +18,12 @@ chrome.runtime.onInstalled.addListener(async () => {
   const settings = await chrome.storage.local.get(['apiRps', 'targetLanguage'])
   configureApi({ rps: settings.apiRps || 0.5 })
   
-  // Create context menu item with dynamic title
-  const targetLanguage = settings.targetLanguage || 'ja'
-  const languageName = getLanguageDisplayName(targetLanguage)
+  // Create context menu item with dynamic title using raw string
+  const targetLanguage = settings.targetLanguage || 'Japanese'
   
   chrome.contextMenus.create({
     id: 'translate-page',
-    title: `AI Translation: ${languageName}`,
+    title: `AI Translation: ${targetLanguage}`,
     contexts: ['page'],
   })
 })
