@@ -261,7 +261,7 @@ export function placeholdersToHtml(
           
           // Match same tag type and open/close state
           if (tag.toLowerCase() === pTag.toLowerCase() && isClosing === pIsClosing) {
-            console.warn(`Unmatched placeholder ${match} replaced with ${placeholder}`)
+            console.debug(`Unmatched placeholder ${match} replaced with ${placeholder}`)
             usedPlaceholders.add(placeholder)
             return original
           }
@@ -281,7 +281,7 @@ export function placeholdersToHtml(
           if (pPattern && pPattern[1].toLowerCase() === tag.toLowerCase()) {
             const pIsClosing = placeholder.startsWith('</')
             if (isClosing === pIsClosing) {
-              console.warn(`Unmatched placeholder ${match} replaced with unused ${placeholder}`)
+              console.debug(`Unmatched placeholder ${match} replaced with unused ${placeholder}`)
               usedPlaceholders.add(placeholder)
               return original
             }
@@ -296,7 +296,7 @@ export function placeholdersToHtml(
       const tagName = normalizedMatch.match(/<\/([a-zA-Z]+)_\d+>/)?.[1]
       if (tagName) {
         // Return a reconstructed closing tag
-        console.warn(`Unmatched placeholder ${match} - reconstructing closing tag`)
+        console.debug(`Unmatched placeholder ${match} - reconstructing closing tag`)
         return `</${tagName}>`
       }
     }
@@ -305,13 +305,13 @@ export function placeholdersToHtml(
     if (!normalizedMatch.startsWith('</')) {
       const tagName = normalizedMatch.match(/<([a-zA-Z]+)_\d+>/)?.[1]
       if (tagName) {
-        console.warn(`Unmatched placeholder ${match} - preserving as simple tag`)
+        console.debug(`Unmatched placeholder ${match} - preserving as simple tag`)
         return `<${tagName}>`
       }
     }
     
     // If absolutely no match found and can't reconstruct, log error but don't remove
-    console.error('Critical: Unmatched placeholder could not be resolved:', match)
+    console.debug('Unmatched placeholder could not be resolved:', match)
     return '' // Last resort: remove to avoid broken display
   })
   
