@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2025-08-11
+
+### Fixed
+- Changed placeholder mismatch warnings to debug level to reduce console noise (#38)
+  - These messages are expected during normal operation when LLMs modify placeholder formats
+  - Fallback logic handles these cases gracefully
+
 ## [0.2.0] - 2025-08-10
 
 ### Added

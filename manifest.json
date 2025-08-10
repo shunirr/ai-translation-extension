@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AI Translation Extension",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Translate web pages powered by LLMs via APIs compatible with the OpenAI GPT protocol",
   "permissions": [
     "activeTab",
