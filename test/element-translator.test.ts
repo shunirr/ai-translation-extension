@@ -103,8 +103,11 @@ describe('Element Translator', () => {
 
       const elements = getTranslatableElements()
       
-      expect(elements).toHaveLength(1) // Only div with enough text
+      // Both divs should be included now with minimum text length of 5
+      // "Short" is exactly 5 characters, so it should be included
+      expect(elements).toHaveLength(2)
       expect(elements[0].textContent).toContain('Hello world from inline elements')
+      expect(elements[1].textContent).toContain('Short')
     })
 
     it('should handle nested list structures', () => {
