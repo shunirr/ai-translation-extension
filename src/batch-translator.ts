@@ -175,12 +175,19 @@ export class BatchTranslator {
             const restoredHTML = placeholdersToHtml(translation, item.placeholderMap)
             item.element.innerHTML = restoredHTML
             item.element.setAttribute('data-translated', 'true')
+            // Remove failed flag if it was set
+            item.element.removeAttribute('data-translation-failed')
+          } else {
+            // Mark as failed if no translation received
+            item.element.setAttribute('data-translation-failed', 'true')
           }
         }
         
-        // Handle missing translations silently
+        // Mark any remaining items as failed if we got fewer translations
         if (translations.length < batch.length) {
-          // Fewer translations than expected, but continue processing what we have
+          for (let i = translations.length; i < batch.length; i++) {
+            batch[i].element.setAttribute('data-translation-failed', 'true')
+          }
         }
       } else {
         console.error('Batch translation failed:', response.error || 'No translated text')
@@ -212,9 +219,17 @@ export class BatchTranslator {
         const restoredHTML = placeholdersToHtml(response.translatedText, item.placeholderMap)
         item.element.innerHTML = restoredHTML
         item.element.setAttribute('data-translated', 'true')
+        // Remove failed flag if it was set
+        item.element.removeAttribute('data-translation-failed')
+      } else {
+        // Mark as failed for potential retry
+        item.element.setAttribute('data-translation-failed', 'true')
+        console.error('Translation failed for element:', response.error)
       }
     } catch (error) {
       console.error('Translation error:', error)
+      // Mark as failed for potential retry
+      item.element.setAttribute('data-translation-failed', 'true')
     }
   }
 }
