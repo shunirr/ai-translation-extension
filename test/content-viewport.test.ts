@@ -175,8 +175,7 @@ describe('Content Script - Viewport Translation', () => {
         apiEndpoint: 'https://api.openai.com/v1/chat/completions',
         apiKey: 'test-key',
         model: 'gpt-3.5-turbo',
-        targetLanguage: 'ja',
-        viewportTranslation: true
+        targetLanguage: 'ja'
       })
       
       // Import content script and get the message listener
@@ -222,8 +221,7 @@ describe('Content Script - Viewport Translation', () => {
         apiEndpoint: 'https://api.openai.com/v1/chat/completions',
         apiKey: 'test-key',
         model: 'gpt-3.5-turbo',
-        targetLanguage: 'ja',
-        viewportTranslation: true
+        targetLanguage: 'ja'
       })
       
       // Reset modules to get fresh instance
@@ -279,8 +277,7 @@ describe('Content Script - Viewport Translation', () => {
         apiEndpoint: 'https://api.openai.com/v1/chat/completions',
         apiKey: 'test-key',
         model: 'gpt-3.5-turbo',
-        targetLanguage: 'ja',
-        viewportTranslation: true
+        targetLanguage: 'ja'
       })
       
       // Import content script and get the message listener
@@ -334,7 +331,6 @@ describe('Content Script - Viewport Translation', () => {
         apiKey: 'test-key',
         model: 'gpt-3.5-turbo',
         targetLanguage: 'ja',
-        viewportTranslation: false // Explicitly disabled
       })
       
       // Import content script and get the message listener
