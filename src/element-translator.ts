@@ -86,7 +86,8 @@ export function getTranslatableElements(root: Element = document.body): Element[
     
     // Get text content
     const text = getTextContent(element)
-    if (text.length < 10) return
+    // Reduce minimum text length to catch shorter content
+    if (text.length < 5) return
     
     // Check if this element is a good candidate for translation
     // Prefer block-level elements and list items
@@ -102,7 +103,9 @@ export function getTranslatableElements(root: Element = document.body): Element[
     const htmlSize = new TextEncoder().encode(element.innerHTML).length
     
     // If element is appropriate and has text, add it
-    if (htmlSize <= 3000 && (isPreferred || isDivCandidate)) {
+    // Increase size limit for preferred elements (P, H1-H6, etc.) to handle complex Wikipedia content
+    const sizeLimit = isPreferred ? 8000 : 3000
+    if (htmlSize <= sizeLimit && (isPreferred || isDivCandidate)) {
       // Check if any parent is already processed
       if (!hasProcessedAncestor(element, processed)) {
         elements.push(element)
