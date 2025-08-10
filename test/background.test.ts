@@ -17,6 +17,7 @@ global.chrome = {
   },
   contextMenus: {
     create: vi.fn(),
+    update: vi.fn(),
     onClicked: {
       addListener: vi.fn(),
     },
@@ -61,7 +62,13 @@ describe('Background Script', () => {
   })
 
   describe('Installation', () => {
-    it('should create context menu on install', async () => {
+    it('should create context menu with dynamic language title on install', async () => {
+      // Mock storage to return Japanese as target language
+      vi.mocked(chrome.storage.local.get).mockResolvedValue({ 
+        targetLanguage: 'ja',
+        apiRps: 0.5
+      })
+      
       await import('../src/background')
 
       // Trigger installation
@@ -69,7 +76,33 @@ describe('Background Script', () => {
 
       expect(chrome.contextMenus.create).toHaveBeenCalledWith({
         id: 'translate-page',
-        title: 'Translate this page',
+        title: 'AI Translation: Japanese',
+        contexts: ['page'],
+      })
+    })
+
+    it('should use custom language code if not in predefined list', async () => {
+      // Mock storage to return a custom language
+      vi.mocked(chrome.storage.local.get).mockResolvedValue({ 
+        targetLanguage: 'custom-lang',
+        apiRps: 0.5
+      })
+      
+      // Clear mocks and re-import
+      vi.clearAllMocks()
+      vi.resetModules()
+      
+      // Re-setup listeners
+      vi.mocked(chrome.runtime.onInstalled.addListener).mockImplementation((listener) => {
+        installedListener = listener
+      })
+      
+      await import('../src/background')
+      await installedListener()
+
+      expect(chrome.contextMenus.create).toHaveBeenCalledWith({
+        id: 'translate-page',
+        title: 'AI Translation: custom-lang',
         contexts: ['page'],
       })
     })

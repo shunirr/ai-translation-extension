@@ -2,15 +2,49 @@
 
 import { configureApi } from './api'
 
+// Helper function to get language display name
+function getLanguageDisplayName(languageCode: string): string {
+  const languageNames: Record<string, string> = {
+    'ja': 'Japanese',
+    'en': 'English',
+    'ko': 'Korean',
+    'zh': 'Chinese',
+    'es': 'Spanish',
+    'fr': 'French',
+    'de': 'German',
+    'it': 'Italian',
+    'pt': 'Portuguese',
+    'ru': 'Russian',
+    'ar': 'Arabic',
+    'hi': 'Hindi'
+  }
+  return languageNames[languageCode] || languageCode
+}
+
+// Helper function to update context menu title
+async function updateContextMenuTitle() {
+  const settings = await chrome.storage.local.get(['targetLanguage'])
+  const targetLanguage = settings.targetLanguage || 'ja'
+  const languageName = getLanguageDisplayName(targetLanguage)
+  
+  // Update the context menu
+  chrome.contextMenus.update('translate-page', {
+    title: `AI Translation: ${languageName}`
+  })
+}
+
 chrome.runtime.onInstalled.addListener(async () => {
   // Initialize API with saved RPS setting
-  const settings = await chrome.storage.local.get(['apiRps'])
+  const settings = await chrome.storage.local.get(['apiRps', 'targetLanguage'])
   configureApi({ rps: settings.apiRps || 0.5 })
   
-  // Create context menu item
+  // Create context menu item with dynamic title
+  const targetLanguage = settings.targetLanguage || 'ja'
+  const languageName = getLanguageDisplayName(targetLanguage)
+  
   chrome.contextMenus.create({
     id: 'translate-page',
-    title: 'Translate this page',
+    title: `AI Translation: ${languageName}`,
     contexts: ['page'],
   })
 })
@@ -23,10 +57,16 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   }
 })
 
-// Listen for storage changes to update RPS
+// Listen for storage changes to update RPS and context menu
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === 'local' && changes.apiRps) {
-    configureApi({ rps: changes.apiRps.newValue || 0.5 })
+  if (areaName === 'local') {
+    if (changes.apiRps) {
+      configureApi({ rps: changes.apiRps.newValue || 0.5 })
+    }
+    if (changes.targetLanguage) {
+      // Update context menu title when language changes
+      updateContextMenuTitle()
+    }
   }
 })
 
