@@ -8,7 +8,6 @@ interface TranslationSettings {
   apiKey: string
   model: string
   targetLanguage: string
-  viewportTranslation?: boolean
   batchSize?: number
 }
 
@@ -157,7 +156,6 @@ async function translatePage() {
       'apiKey',
       'model',
       'targetLanguage',
-      'viewportTranslation',
       'batchSize'
     ])
 
@@ -168,10 +166,9 @@ async function translatePage() {
     const settings: TranslationSettings = {
       apiEndpoint: storageData.apiEndpoint || 'https://api.openai.com/v1/chat/completions',
       apiKey: storageData.apiKey,
-      model: storageData.model || 'gpt-4.1-mini',
+      model: storageData.model || 'gpt-4.1-nano',
       targetLanguage: storageData.targetLanguage || 'Japanese',
-      viewportTranslation: storageData.viewportTranslation,
-      batchSize: storageData.batchSize || 2000
+      batchSize: storageData.batchSize || 1000
     }
 
     // Clean up existing observer
@@ -179,11 +176,8 @@ async function translatePage() {
       translationObserver.disconnect()
     }
 
-    // Check if viewport-based translation is enabled (default: true for large pages)
-    const pageSize = document.body.textContent?.length || 0
-    const useViewportTranslation = settings.viewportTranslation !== false || pageSize > 50000
-
-    if (useViewportTranslation) {
+    // Always use viewport-based translation (Smart Translation)
+    {
       // Set up intersection observer for viewport-based translation
       translationObserver = createTranslationObserver(settings)
       
@@ -231,29 +225,6 @@ async function translatePage() {
       
       chrome.runtime.sendMessage({ action: 'updateBadge', status: 'completed' })
       return { status: 'completed', translatedCount: visibleElements.length, totalElements: observedCount }
-      
-    } else {
-      // Full-page translation using batch translator
-      const translatableElements = getTranslatableElements()
-      
-      if (translatableElements.length === 0) {
-        throw new Error('No translatable content found on this page')
-      }
-
-      // Use batch translator
-      const batchTranslator = new BatchTranslator({
-        maxCharactersPerBatch: settings.batchSize
-      })
-      
-      if (progressIndicator) {
-        progressIndicator.textContent = `Translating... (${translatableElements.length} elements)`
-      }
-
-      await batchTranslator.translateElements(translatableElements, settings)
-
-      hideProgress()
-      chrome.runtime.sendMessage({ action: 'updateBadge', status: 'completed' })
-      return { status: 'completed', translatedCount: translatableElements.length }
     }
 
   } catch (error) {

@@ -21,8 +21,7 @@ const mockElements = {
   model: { value: '', addEventListener: vi.fn() } as any,
   targetLanguage: { value: 'Japanese', addEventListener: vi.fn() } as any,
   apiRps: { value: '0.9', addEventListener: vi.fn() } as any,
-  batchSize: { value: '2000', addEventListener: vi.fn() } as any,
-  viewportTranslation: { checked: true, addEventListener: vi.fn() } as any,
+  batchSize: { value: '1000', addEventListener: vi.fn() } as any,
   saveSettings: { addEventListener: vi.fn() } as any,
   translatePage: { addEventListener: vi.fn() } as any,
   restorePage: { addEventListener: vi.fn() } as any,
@@ -38,7 +37,6 @@ document.getElementById = vi.fn((id: string) => {
     'target-language': mockElements.targetLanguage,
     'api-rps': mockElements.apiRps,
     'batch-size': mockElements.batchSize,
-    'viewport-translation': mockElements.viewportTranslation,
     'save-settings': mockElements.saveSettings,
     'translate-page': mockElements.translatePage,
     'restore-page': mockElements.restorePage,
@@ -56,8 +54,7 @@ describe('Popup', () => {
     mockElements.model.value = ''
     mockElements.targetLanguage.value = 'ja'
     mockElements.apiRps.value = '0.9'
-    mockElements.batchSize.value = '2000'
-    mockElements.viewportTranslation.checked = true
+    mockElements.batchSize.value = '1000'
     mockElements.status.textContent = ''
     mockElements.status.className = 'status'
   })
@@ -89,8 +86,7 @@ describe('Popup', () => {
         'model',
         'targetLanguage',
         'apiRps',
-        'batchSize',
-        'viewportTranslation'
+        'batchSize'
       ])
       
       expect(mockElements.apiEndpoint.value).toBe('https://custom.api.com')
@@ -134,8 +130,7 @@ describe('Popup', () => {
         model: 'gpt-4',
         targetLanguage: 'Japanese',
         apiRps: 0.9,
-        batchSize: 2000,
-        viewportTranslation: true
+        batchSize: 1000
       })
       
       expect(mockElements.status.className).toContain('success')
@@ -157,11 +152,10 @@ describe('Popup', () => {
       expect(chrome.storage.local.set).toHaveBeenCalledWith({
         apiEndpoint: 'https://api.openai.com/v1/chat/completions',
         apiKey: 'some-key',
-        model: 'gpt-4.1-mini',
+        model: 'gpt-4.1-nano',
         targetLanguage: 'ja',
         apiRps: 0.9,
-        batchSize: 2000,
-        viewportTranslation: true
+        batchSize: 1000
       })
     })
   })

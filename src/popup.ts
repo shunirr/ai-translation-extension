@@ -7,7 +7,6 @@ const modelInput = document.getElementById('model') as HTMLInputElement
 const targetLanguageInput = document.getElementById('target-language') as HTMLInputElement
 const apiRpsInput = document.getElementById('api-rps') as HTMLInputElement
 const batchSizeInput = document.getElementById('batch-size') as HTMLInputElement
-const viewportTranslationCheckbox = document.getElementById('viewport-translation') as HTMLInputElement
 const saveSettingsButton = document.getElementById('save-settings') as HTMLButtonElement
 const translateButton = document.getElementById('translate-page') as HTMLButtonElement
 const restoreButton = document.getElementById('restore-page') as HTMLButtonElement
@@ -21,8 +20,7 @@ async function loadSettings() {
     'model',
     'targetLanguage',
     'apiRps',
-    'batchSize',
-    'viewportTranslation'
+    'batchSize'
   ])
   
   if (settings.apiEndpoint) {
@@ -45,12 +43,7 @@ async function loadSettings() {
   if (settings.batchSize !== undefined) {
     batchSizeInput.value = settings.batchSize.toString()
   } else {
-    batchSizeInput.value = '2000' // Default to 2000 characters
-  }
-  if (settings.viewportTranslation !== undefined) {
-    viewportTranslationCheckbox.checked = settings.viewportTranslation
-  } else {
-    viewportTranslationCheckbox.checked = true // Default to true
+    batchSizeInput.value = '1000' // Default to 1000 characters
   }
 }
 
@@ -59,11 +52,10 @@ async function saveSettings() {
   const settings = {
     apiEndpoint: apiEndpointInput.value || 'https://api.openai.com/v1/chat/completions',
     apiKey: apiKeyInput.value,
-    model: modelInput.value || 'gpt-4.1-mini',
+    model: modelInput.value || 'gpt-4.1-nano',
     targetLanguage: targetLanguageInput.value || 'Japanese',
     apiRps: parseFloat(apiRpsInput.value) || 0.9,
-    batchSize: parseInt(batchSizeInput.value) || 2000,
-    viewportTranslation: viewportTranslationCheckbox.checked
+    batchSize: parseInt(batchSizeInput.value) || 1000
   }
   
   await chrome.storage.local.set(settings)
