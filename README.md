@@ -7,7 +7,7 @@ A browser extension that translates web pages powered by LLMs via APIs compatibl
 - Translate entire web pages while preserving HTML structure and formatting
 - Support for any language (configurable via text input)
 - Cache translations to avoid redundant API calls
-- Viewport-based translation for better performance on large pages
+- Smart Translation: viewport-based translation that translates content as you scroll
 - Restore original content with one click
 - Compatible with any LLM API that implements the OpenAI GPT protocol
 
@@ -16,13 +16,13 @@ A browser extension that translates web pages powered by LLMs via APIs compatibl
 ### Prerequisites
 
 - [mise](https://mise.jdx.dev/) - Runtime version manager
-- Node.js 24.5.0 (automatically installed via mise)
+- Node.js 22.0.0 or higher (automatically installed via mise)
 
 ### Installation
 
 1. Clone the repository:
 ```bash
-git@github.com:shunirr/ai-translation-extension.git
+git clone git@github.com:shunirr/ai-translation-extension.git
 cd ai-translation-extension
 ```
 
@@ -77,10 +77,10 @@ After installing the extension, click on the extension icon to configure:
 
 - **API Endpoint**: The LLM API endpoint (default: `https://api.openai.com/v1/chat/completions`)
 - **API Key**: Your API key for authentication
-- **Model**: The model to use (default: `gpt-4.1-mini`)
+- **Model**: The model to use (default: `gpt-4.1-nano`)
 - **Target Language**: The language to translate to (default: `Japanese`)
 - **API Rate Limit**: Requests per second limit (default: `0.9 RPS`)
-- **Batch Size**: Maximum characters per batch request (default: `2000`)
+- **Batch Size**: Maximum characters per batch request (default: `1000`)
 
 ## Usage
 
@@ -90,7 +90,7 @@ After installing the extension, click on the extension icon to configure:
 4. Click "Translate Page"
 5. To restore the original content, click "Restore Original"
 
-You can also right-click on any page and select "Translate this page" from the context menu.
+You can also right-click on any page and select "AI Translation: [Language]" from the context menu (where [Language] is your configured target language).
 
 ## Technical Details
 
@@ -122,7 +122,7 @@ The extension consists of several key components:
 
 ### Supported Features
 
-- **Viewport-based Translation**: Automatically enabled for large pages (>50,000 characters)
+- **Smart Translation**: Always-on viewport-based translation that translates content as it becomes visible
 - **Progress Indication**: Shows translation progress with badge and notifications
 - **Error Handling**: Displays clear error messages when translation fails
 - **State Preservation**: Original content stored in `data-*` attributes
