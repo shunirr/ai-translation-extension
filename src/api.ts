@@ -92,23 +92,26 @@ Only return the translated text.`
           { role: 'system', content: systemPrompt },
           { role: 'user', content: text }
         ],
-        // GPT-5 models only support default temperature (1)
+        temperature: 0.3,
+        max_tokens: 4000,
+        // Add GPT-5 specific parameters for Chat Completions API
         ...(model.toLowerCase().includes('gpt-5') 
-          ? {} // Omit temperature for GPT-5 to use default
-          : { temperature: 0.3 }),
-        // Use max_completion_tokens for newer models, max_tokens for legacy
-        ...(model.toLowerCase().includes('gpt-5') 
-          ? { max_completion_tokens: 4000 }
-          : { max_tokens: 4000 })
+          ? { 
+              reasoning_effort: 'minimal', // Use minimal reasoning for fast translation
+              verbosity: 'low' // Low verbosity for concise translations
+            }
+          : {})
       })
     }))
     
     if (!response.ok) {
-      throw new Error(`API request failed: ${response.status} ${response.statusText}`)
+      const errorData = await response.json().catch(() => null)
+      const errorMessage = errorData?.error?.message || `${response.status} ${response.statusText}`
+      throw new Error(`API request failed: ${errorMessage}`)
     }
     
     const data = await response.json()
-    const translatedText = data.choices[0].message.content
+    const translatedText = data.choices[0]?.message?.content || ''
     
     return { translatedText }
   } catch (error) {
