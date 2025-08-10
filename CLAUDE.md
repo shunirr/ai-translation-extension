@@ -44,16 +44,13 @@ Please talk in Japanese, But write code-comments in English.
 
 ## Development Workflow
 
-Task Loop[Development -> Task Completion]. Before the first release, you can
-work in the main branch without creating pull-requests. But after the first
-release, you must use pull-requests.
+IMPORTANT: Always work on a feature branch and create pull requests. Never commit directly to the main branch.
 
 ### Development process
 
-1. First, create a branch with `git checkout -b` and `checkout` from the HEAD of
-   the main branch. This branch name is a concise English version of the name of
-   the work you are about to do. If you have changes before committing and
-   cannot `checkout -b`, ask whether you should `commit`, `stash`, or discard.
+1. ALWAYS create a feature branch with `git checkout -b feature/[descriptive-name]` from the HEAD of
+   the main branch. This branch name should be a concise English version of the work you are about to do. 
+   If you have changes before committing and cannot `checkout -b`, ask whether you should `commit`, `stash`, or discard.
 2. Develop test code first. Once the test code works, the production level code
    should be complete. The test code should also work in CI.
 3. After implementing any code changes, always run these checks:
