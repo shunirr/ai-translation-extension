@@ -7,11 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2025-08-10
+
 ### Added
 - Dynamic context menu title showing "AI Translation: [Language]" based on configured target language (#30)
 - ESLint v9 with Flat Config format support (#28)
 - Improved Renovate configuration for better dependency management (#29)
-- Comprehensive documentation updates (CHANGELOG.md, improved README.md, CLAUDE.md, CONTRIBUTING.md)
+- Comprehensive documentation updates (CHANGELOG.md, improved README.md, CLAUDE.md, CONTRIBUTING.md) (#33)
+- Retry mechanism for failed translations on scroll (#35)
 
 ### Changed
 - Default model changed from `gpt-4.1-mini` to `gpt-4.1-nano` for better performance (#31)
@@ -19,9 +22,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Smart Translation (viewport-based) is now always enabled (removed toggle option) (#31)
 - Context menu now displays the actual configured language instead of generic "Translate this page" (#30)
 - Development workflow now requires feature branches (no direct commits to main) (#32)
+- Increased size limit for preferred elements from 3000 to 8000 bytes to handle complex HTML structures (#36)
+- Reduced minimum text length from 10 to 5 characters for better content detection (#36)
 
 ### Fixed
 - Reverted incorrect GPT-5 compatibility attempts that were causing API errors (#27)
+- Progress indicator and badge now properly display during scroll-triggered translations (#34)
+- Complex Wikipedia-style paragraphs with heavy nested HTML structures are now properly translated (#36)
 
 ### Removed
 - Smart Translation toggle from popup UI (now always enabled) (#31)
