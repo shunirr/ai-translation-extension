@@ -1,6 +1,6 @@
 {
   "name": "ai-translation-extension",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Chrome extension for translating web pages powered by LLMs via APIs compatible with the OpenAI GPT protocol",
   "type": "module",
   "scripts": {
