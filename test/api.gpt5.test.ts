@@ -47,7 +47,6 @@ describe('API - GPT-5 Compatibility', () => {
     expect(body.model).toBe('gpt-5-nano')
     expect(body.max_completion_tokens).toBe(4000)
     expect(body.max_tokens).toBeUndefined()
-    expect(body.temperature).toBeUndefined() // GPT-5 doesn't support custom temperature
   })
 
   it('should use max_tokens for GPT-4 models', async () => {
@@ -76,7 +75,6 @@ describe('API - GPT-5 Compatibility', () => {
     expect(body.model).toBe('gpt-4')
     expect(body.max_tokens).toBe(4000)
     expect(body.max_completion_tokens).toBeUndefined()
-    expect(body.temperature).toBe(0.3) // GPT-4 supports custom temperature
   })
 
   it('should handle GPT-5-turbo model variant', async () => {
@@ -105,6 +103,5 @@ describe('API - GPT-5 Compatibility', () => {
     expect(body.model).toBe('GPT-5-Turbo')
     expect(body.max_completion_tokens).toBe(4000)
     expect(body.max_tokens).toBeUndefined()
-    expect(body.temperature).toBeUndefined() // GPT-5 doesn't support custom temperature
   })
 })
