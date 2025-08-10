@@ -78,8 +78,7 @@ describe('API', () => {
       vi.mocked(global.fetch).mockResolvedValueOnce({
         ok: false,
         status: 401,
-        statusText: 'Unauthorized',
-        json: async () => Promise.reject(new Error('No JSON body'))
+        statusText: 'Unauthorized'
       } as Response)
 
       const result = await translateText(baseRequest)
@@ -130,7 +129,7 @@ describe('API', () => {
       expect(body.model).toBe('gpt-4')
       expect(body.messages[1].content).toBe('Text with <strong_0>placeholder</strong_0>')
       expect(body.temperature).toBe(0.3)
-      expect(body.max_tokens).toBe(4000) // GPT-4 uses max_tokens
+      expect(body.max_tokens).toBe(4000)
     })
 
     it('should handle custom API endpoints', async () => {

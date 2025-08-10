@@ -93,25 +93,16 @@ Only return the translated text.`
           { role: 'user', content: text }
         ],
         temperature: 0.3,
-        max_tokens: 4000,
-        // Add GPT-5 specific parameters for Chat Completions API
-        ...(model.toLowerCase().includes('gpt-5') 
-          ? { 
-              reasoning_effort: 'minimal', // Use minimal reasoning for fast translation
-              verbosity: 'low' // Low verbosity for concise translations
-            }
-          : {})
+        max_tokens: 4000
       })
     }))
     
     if (!response.ok) {
-      const errorData = await response.json().catch(() => null)
-      const errorMessage = errorData?.error?.message || `${response.status} ${response.statusText}`
-      throw new Error(`API request failed: ${errorMessage}`)
+      throw new Error(`API request failed: ${response.status} ${response.statusText}`)
     }
     
     const data = await response.json()
-    const translatedText = data.choices[0]?.message?.content || ''
+    const translatedText = data.choices[0].message.content
     
     return { translatedText }
   } catch (error) {
