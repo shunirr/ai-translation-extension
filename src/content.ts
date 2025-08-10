@@ -86,6 +86,7 @@ function createTranslationObserver(settings: TranslationSettings): IntersectionO
   
   let pendingElements: Element[] = []
   let batchTimeout: NodeJS.Timeout | null = null
+  let totalObservedElements = 0  // Track total elements being observed
   
   const processPendingBatch = async () => {
     if (pendingElements.length === 0) return
@@ -93,18 +94,41 @@ function createTranslationObserver(settings: TranslationSettings): IntersectionO
     const elementsToTranslate = [...pendingElements]
     pendingElements = []
     
+    // Show progress indicator for scroll-triggered translations
+    showProgress()
+    // Update badge to show translation in progress
+    chrome.runtime.sendMessage({ action: 'updateBadge', status: 'translating' })
+    
     try {
       await batchTranslator.translateElements(elementsToTranslate, settings)
+      
+      // Hide progress after successful translation
+      hideProgress()
+      
+      // Check if all observed elements have been translated
+      const allTranslated = document.querySelectorAll('[data-translated="true"]').length >= totalObservedElements
+      
+      if (allTranslated) {
+        // All elements translated, clear badge
+        chrome.runtime.sendMessage({ action: 'updateBadge', status: 'completed' })
+      } else {
+        // Keep badge showing "..." to indicate background translation is active
+        chrome.runtime.sendMessage({ action: 'updateBadge', status: 'translating' })
+      }
     } catch (error) {
       // On error, remove from translatedElements so it can be retried
       elementsToTranslate.forEach(element => {
         translatedElements.delete(element)
       })
       console.error('Batch translation error:', error)
+      
+      // Hide progress and show error status
+      hideProgress()
+      chrome.runtime.sendMessage({ action: 'updateBadge', status: 'error' })
     }
   }
   
-  return new IntersectionObserver(
+  const observer = new IntersectionObserver(
     (entries) => {
       const newVisibleElements: Element[] = []
       
@@ -135,6 +159,13 @@ function createTranslationObserver(settings: TranslationSettings): IntersectionO
       threshold: 0.1
     }
   )
+  
+  // Store the total count setter on the observer
+  ;(observer as any).setTotalElements = (count: number) => {
+    totalObservedElements = count
+  }
+  
+  return observer
 }
 
 // Translate the page (viewport-based)
@@ -192,6 +223,9 @@ async function translatePage() {
         observedCount++
       })
       
+      // Set the total elements count on the observer
+      ;(translationObserver as any).setTotalElements(observedCount)
+      
       // Translate visible elements immediately
       const visibleElements = translatableElements.filter(el => {
         const rect = el.getBoundingClientRect()
@@ -221,9 +255,13 @@ async function translatePage() {
       // Show info about viewport translation
       if (observedCount > visibleElements.length) {
         showInfo(`Translated ${visibleElements.length} visible elements. ${observedCount - visibleElements.length} more will translate as you scroll.`)
+        // Keep badge showing "..." to indicate more translations will happen on scroll
+        chrome.runtime.sendMessage({ action: 'updateBadge', status: 'translating' })
+      } else {
+        // All elements translated, clear badge
+        chrome.runtime.sendMessage({ action: 'updateBadge', status: 'completed' })
       }
       
-      chrome.runtime.sendMessage({ action: 'updateBadge', status: 'completed' })
       return { status: 'completed', translatedCount: visibleElements.length, totalElements: observedCount }
     }
 
