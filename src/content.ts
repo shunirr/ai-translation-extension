@@ -119,12 +119,23 @@ function createTranslationObserver(settings: TranslationSettings): IntersectionO
       // On error, remove from translatedElements so it can be retried
       elementsToTranslate.forEach(element => {
         translatedElements.delete(element)
+        // Mark element as failed for potential retry
+        element.setAttribute('data-translation-failed', 'true')
       })
       console.error('Batch translation error:', error)
       
       // Hide progress and show error status
       hideProgress()
       chrome.runtime.sendMessage({ action: 'updateBadge', status: 'error' })
+      
+      // Re-observe failed elements after a delay to allow retry
+      setTimeout(() => {
+        elementsToTranslate.forEach(element => {
+          // Re-observe the element to trigger retry on next scroll
+          observer.unobserve(element)
+          observer.observe(element)
+        })
+      }, 1000)
     }
   }
   
@@ -139,6 +150,10 @@ function createTranslationObserver(settings: TranslationSettings): IntersectionO
           newVisibleElements.push(entry.target)
           // Mark as pending to prevent duplicate processing
           translatedElements.add(entry.target)
+          // Remove failed flag if it exists (for retry)
+          if (entry.target.hasAttribute('data-translation-failed')) {
+            entry.target.removeAttribute('data-translation-failed')
+          }
         }
       })
       
