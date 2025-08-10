@@ -92,7 +92,10 @@ Only return the translated text.`
           { role: 'system', content: systemPrompt },
           { role: 'user', content: text }
         ],
-        temperature: 0.3,
+        // GPT-5 models only support default temperature (1)
+        ...(model.toLowerCase().includes('gpt-5') 
+          ? {} // Omit temperature for GPT-5 to use default
+          : { temperature: 0.3 }),
         // Use max_completion_tokens for newer models, max_tokens for legacy
         ...(model.toLowerCase().includes('gpt-5') 
           ? { max_completion_tokens: 4000 }
