@@ -2,15 +2,28 @@
 
 import { configureApi } from './api'
 
+// Helper function to update context menu title
+async function updateContextMenuTitle() {
+  const settings = await chrome.storage.local.get(['targetLanguage'])
+  const targetLanguage = settings.targetLanguage || 'Japanese'
+  
+  // Update the context menu with the exact string from settings
+  chrome.contextMenus.update('translate-page', {
+    title: `AI Translation: ${targetLanguage}`
+  })
+}
+
 chrome.runtime.onInstalled.addListener(async () => {
   // Initialize API with saved RPS setting
-  const settings = await chrome.storage.local.get(['apiRps'])
+  const settings = await chrome.storage.local.get(['apiRps', 'targetLanguage'])
   configureApi({ rps: settings.apiRps || 0.5 })
   
-  // Create context menu item
+  // Create context menu item with dynamic title using raw string
+  const targetLanguage = settings.targetLanguage || 'Japanese'
+  
   chrome.contextMenus.create({
     id: 'translate-page',
-    title: 'Translate this page',
+    title: `AI Translation: ${targetLanguage}`,
     contexts: ['page'],
   })
 })
@@ -23,10 +36,16 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   }
 })
 
-// Listen for storage changes to update RPS
+// Listen for storage changes to update RPS and context menu
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === 'local' && changes.apiRps) {
-    configureApi({ rps: changes.apiRps.newValue || 0.5 })
+  if (areaName === 'local') {
+    if (changes.apiRps) {
+      configureApi({ rps: changes.apiRps.newValue || 0.5 })
+    }
+    if (changes.targetLanguage) {
+      // Update context menu title when language changes
+      updateContextMenuTitle()
+    }
   }
 })
 
