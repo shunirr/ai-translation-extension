@@ -1,8 +1,7 @@
 // Content script for AI Translation Extension with Reader Mode Overlay
 
 import { isReaderable, extractArticleForOverlay } from './readability-adapter'
-import { translateText } from './api'
-import { htmlToPlaceholders, placeholdersToHtml } from './utils'
+import { BatchTranslator } from './batch-translator'
 import './overlay.css'
 
 interface TranslationSettings {
@@ -128,39 +127,32 @@ async function translateOverlayContent(settings: TranslationSettings) {
   if (!contentElement) return
   
   // Get all paragraphs and headings
-  const elements = contentElement.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote')
-  const totalElements = elements.length
-  let completed = 0
+  const elements = Array.from(contentElement.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote'))
+    .filter(el => el.textContent?.trim())
   
-  // Translate each element
-  for (const element of elements) {
-    const html = element.innerHTML
-    if (!html.trim()) continue
-    
-    // Convert to placeholders
-    const { text: placeholderText, map } = htmlToPlaceholders(html)
-    
-    try {
-      // Translate
-      const response = await translateText({
-        text: placeholderText,
-        targetLanguage: settings.targetLanguage,
-        apiEndpoint: settings.apiEndpoint,
-        apiKey: settings.apiKey,
-        model: settings.model
-      })
-      
-      if (!response.error && response.translatedText) {
-        // Restore HTML and apply
-        const restoredHTML = placeholdersToHtml(response.translatedText, map)
-        element.innerHTML = restoredHTML
-      }
-    } catch (error) {
-      console.error('Translation error:', error)
-    }
-    
-    completed++
-    updateProgress(10 + (completed / totalElements) * 80)
+  if (elements.length === 0) return
+  
+  // Create batch translator with configured batch size
+  const batchTranslator = new BatchTranslator({
+    maxCharactersPerBatch: settings.batchSize || 1000
+  })
+  
+  // Set up progress tracking
+  let progressCallback = (processed: number, total: number) => {
+    const percent = 10 + (processed / total) * 80
+    updateProgress(percent)
+  }
+  
+  // Translate all elements in batches
+  try {
+    await batchTranslator.translateElements(elements as Element[], {
+      apiEndpoint: settings.apiEndpoint,
+      apiKey: settings.apiKey,
+      model: settings.model,
+      targetLanguage: settings.targetLanguage
+    }, progressCallback)
+  } catch (error) {
+    console.error('Translation error:', error)
   }
 }
 

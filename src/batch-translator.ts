@@ -36,13 +36,26 @@ export class BatchTranslator {
   }
   
   // Process elements in batches
-  async translateElements(elements: Element[], settings: TranslationSettings): Promise<void> {
+  async translateElements(
+    elements: Element[], 
+    settings: TranslationSettings,
+    progressCallback?: (processed: number, total: number) => void
+  ): Promise<void> {
     const items = this.prepareTranslationItems(elements)
     const batches = this.createBatches(items, settings)
+    
+    let processedItems = 0
+    const totalItems = items.length
     
     // Process each batch
     for (const batch of batches) {
       await this.processBatch(batch, settings)
+      
+      // Update progress
+      processedItems += batch.length
+      if (progressCallback) {
+        progressCallback(processedItems, totalItems)
+      }
     }
   }
   
@@ -102,14 +115,12 @@ export class BatchTranslator {
     }
     
     // Now batch all uncached items, maximizing batch size utilization
-    // Use TextEncoder to accurately measure byte size
-    const encoder = new TextEncoder()
-    
+    // Count characters (not bytes) for batch size
     for (const item of uncachedItems) {
-      // Calculate the byte size this item would add to the batch
-      const itemBytes = encoder.encode(item.placeholderText).length
-      const delimiterBytes = currentBatch.length > 0 ? encoder.encode(this.config.batchDelimiter).length : 0
-      const totalItemSize = itemBytes + delimiterBytes
+      // Calculate the character count this item would add to the batch
+      const itemLength = item.placeholderText.length
+      const delimiterLength = currentBatch.length > 0 ? this.config.batchDelimiter.length : 0
+      const totalItemSize = itemLength + delimiterLength
       
       // Only create new batch if adding this item would exceed the limit
       // AND we already have items in the current batch
