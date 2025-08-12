@@ -93,8 +93,7 @@ describe('Popup', () => {
         'targetLanguage',
         'apiRps',
         'batchSize',
-        'readabilityMode',
-        'charThreshold'
+        'readabilityMode'
       ])
       
       expect(mockElements.apiEndpoint.value).toBe('https://custom.api.com')
@@ -139,8 +138,7 @@ describe('Popup', () => {
         targetLanguage: 'Japanese',
         apiRps: 0.9,
         batchSize: 1000,
-        readabilityMode: 'limited',
-        charThreshold: 500
+        readabilityMode: true
       })
       
       expect(mockElements.status.className).toContain('success')
@@ -166,8 +164,7 @@ describe('Popup', () => {
         targetLanguage: 'ja',
         apiRps: 0.9,
         batchSize: 1000,
-        readabilityMode: 'limited',
-        charThreshold: 500
+        readabilityMode: true
       })
     })
   })

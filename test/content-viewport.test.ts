@@ -132,7 +132,7 @@ describe('Content Script - Viewport Translation', () => {
   })
 
   describe('Viewport-based translation', () => {
-    it('should use viewport translation for large pages', async () => {
+    it.skip('should use viewport translation for large pages - replaced by overlay mode', async () => {
       // Create a large page
       document.body.innerHTML = `
         <div style="height: 2000px">
@@ -211,7 +211,7 @@ describe('Content Script - Viewport Translation', () => {
       expect(hiddenEl.textContent).toBe('This is hidden text below the viewport area')
     })
 
-    it('should translate elements as they come into view', async () => {
+    it.skip('should translate elements as they come into view - replaced by overlay mode', async () => {
       document.body.innerHTML = `
         <p id="element1">First text</p>
         <p id="element2">Second text</p>
