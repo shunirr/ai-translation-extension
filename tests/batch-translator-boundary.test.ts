@@ -88,7 +88,7 @@ describe('BatchTranslator - Element Boundary Handling', () => {
     // Create elements including one that exceeds the limit
     const elements = [
       createMockElement('Small text.'), // ~11 chars
-      createMockElement('This is a very long paragraph that exceeds our 100 character limit. It contains enough text to go over the threshold and should be processed alone.'), // ~150 chars
+      createMockElement('This is a very long paragraph that exceeds our 100 character limit. It contains enough text to go over the threshold and should be split into chunks.'), // ~152 chars
       createMockElement('Another small one.'), // ~18 chars
     ]
     
@@ -114,14 +114,22 @@ describe('BatchTranslator - Element Boundary Handling', () => {
       targetLanguage: 'Japanese'
     })
     
-    // Should create 3 batches due to oversized element
-    expect(batchCalls.length).toBe(3)
+    // Should create 4 batches: small, chunk1, chunk2, small
+    expect(batchCalls.length).toBe(4)
     expect(batchCalls[0].length).toBe(1) // First small element
-    expect(batchCalls[1].length).toBe(1) // Oversized element alone
-    expect(batchCalls[2].length).toBe(1) // Last small element
+    expect(batchCalls[1].length).toBe(1) // First chunk of oversized element
+    expect(batchCalls[2].length).toBe(1) // Second chunk of oversized element
+    expect(batchCalls[3].length).toBe(1) // Last small element
     
     // Should have warned about oversized element
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Element exceeds max batch size'))
+    
+    // Verify that each chunk is under the limit
+    batchCalls.forEach(batch => {
+      batch.forEach(text => {
+        expect(text.length).toBeLessThanOrEqual(100)
+      })
+    })
     
     warnSpy.mockRestore()
   })
