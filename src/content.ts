@@ -1,7 +1,8 @@
-// Content script for AI Translation Extension
+// Content script for AI Translation Extension with Reader Mode Overlay
 
-import { getTranslatableElements } from './element-translator'
+import { isReaderable, extractArticleForOverlay } from './readability-adapter'
 import { BatchTranslator } from './batch-translator'
+import './overlay.css'
 
 interface TranslationSettings {
   apiEndpoint: string
@@ -9,277 +10,185 @@ interface TranslationSettings {
   model: string
   targetLanguage: string
   batchSize?: number
+  readabilityMode?: boolean
 }
 
-// Translation state
+// Overlay state
+let overlayElement: HTMLElement | null = null
 let isTranslating = false
-let progressIndicator: HTMLElement | null = null
-let translationObserver: IntersectionObserver | null = null
-let translatedElements = new WeakSet<Element>()
-const pendingTranslations = new Map<Element, () => Promise<void>>()
 
-// Create progress indicator
-function createProgressIndicator(): HTMLElement {
-  const indicator = document.createElement('div')
-  indicator.className = 'translation-progress'
-  indicator.textContent = 'Translating...'
-  indicator.style.cssText = `
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background: #1a73e8;
-    color: white;
-    padding: 12px 24px;
-    border-radius: 4px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    z-index: 9999;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    font-size: 14px;
+// Create reader mode overlay
+function createOverlay(): HTMLElement {
+  const overlay = document.createElement('div')
+  overlay.className = 'ai-translation-overlay'
+  overlay.innerHTML = `
+    <div class="ai-translation-overlay__controls">
+      <button class="ai-translation-overlay__button ai-translation-overlay__button--secondary" id="overlay-toggle-theme">
+        🌙 Dark
+      </button>
+      <button class="ai-translation-overlay__button ai-translation-overlay__close" id="overlay-close">
+        ✕
+      </button>
+    </div>
+    <div class="ai-translation-overlay__progress" style="display: none;">
+      <div class="ai-translation-overlay__progress-bar" style="width: 0%;"></div>
+    </div>
+    <div class="ai-translation-overlay__container">
+      <div class="ai-translation-overlay__loading">
+        Extracting article content...
+      </div>
+    </div>
   `
-  return indicator
+  
+  // Add event listeners
+  const closeBtn = overlay.querySelector('#overlay-close')
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      removeOverlay()
+    })
+  }
+  
+  const themeBtn = overlay.querySelector('#overlay-toggle-theme')
+  if (themeBtn) {
+    themeBtn.addEventListener('click', () => {
+      overlay.classList.toggle('dark')
+      const isDark = overlay.classList.contains('dark')
+      themeBtn.textContent = isDark ? '☀️ Light' : '🌙 Dark'
+    })
+  }
+  
+  // Handle ESC key
+  const handleEsc = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      removeOverlay()
+    }
+  }
+  document.addEventListener('keydown', handleEsc)
+  overlay.dataset.escListener = 'true'
+  
+  return overlay
 }
 
-// Show progress indicator
-function showProgress() {
-  if (!progressIndicator) {
-    progressIndicator = createProgressIndicator()
-    document.body.appendChild(progressIndicator)
+// Remove overlay
+function removeOverlay() {
+  if (overlayElement) {
+    overlayElement.remove()
+    overlayElement = null
+    // Restore body scroll
+    document.body.style.overflow = ''
   }
 }
 
-// Hide progress indicator
-function hideProgress() {
-  if (progressIndicator) {
-    progressIndicator.remove()
-    progressIndicator = null
+// Update progress bar
+function updateProgress(percent: number) {
+  if (!overlayElement) return
+  const progressBar = overlayElement.querySelector('.ai-translation-overlay__progress-bar') as HTMLElement
+  const progressContainer = overlayElement.querySelector('.ai-translation-overlay__progress') as HTMLElement
+  if (progressBar && progressContainer) {
+    progressContainer.style.display = percent > 0 && percent < 100 ? 'block' : 'none'
+    progressBar.style.width = `${percent}%`
   }
 }
 
-// Show error message
-function showError(message: string) {
-  hideProgress()
-  const errorDiv = document.createElement('div')
-  errorDiv.className = 'translation-error'
-  errorDiv.textContent = message
-  errorDiv.style.cssText = `
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background: #d33c26;
-    color: white;
-    padding: 12px 24px;
-    border-radius: 4px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    z-index: 9999;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    font-size: 14px;
-  `
-  document.body.appendChild(errorDiv)
-  setTimeout(() => errorDiv.remove(), 5000)
+// Display article in overlay
+async function displayArticleInOverlay(article: { content: string; title?: string; byline?: string }, settings: TranslationSettings) {
+  if (!overlayElement) return
+  
+  const container = overlayElement.querySelector('.ai-translation-overlay__container')
+  if (!container) return
+  
+  // Build article HTML
+  let html = '<div class="ai-translation-overlay__header">'
+  if (article.title) {
+    html += `<h1 class="ai-translation-overlay__title">${article.title}</h1>`
+  }
+  if (article.byline) {
+    html += `<div class="ai-translation-overlay__meta">${article.byline}</div>`
+  }
+  html += '</div>'
+  html += `<div class="ai-translation-overlay__content">${article.content}</div>`
+  
+  container.innerHTML = html
+  
+  // Start translation
+  updateProgress(10)
+  await translateOverlayContent(settings)
+  updateProgress(100)
+  
+  // Hide progress after completion
+  setTimeout(() => updateProgress(0), 500)
 }
 
-// Create intersection observer for viewport-based translation
-function createTranslationObserver(settings: TranslationSettings): IntersectionObserver {
+// Translate overlay content
+async function translateOverlayContent(settings: TranslationSettings) {
+  if (!overlayElement) return
+  
+  const contentElement = overlayElement.querySelector('.ai-translation-overlay__content') as HTMLElement
+  if (!contentElement) return
+  
+  // Get all paragraphs and headings
+  const elements = Array.from(contentElement.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote'))
+    .filter(el => el.textContent?.trim())
+  
+  if (elements.length === 0) return
+  
+  // Create batch translator with configured batch size
   const batchTranslator = new BatchTranslator({
-    maxCharactersPerBatch: settings.batchSize
+    maxCharactersPerBatch: settings.batchSize || 1000
   })
   
-  let pendingElements: Element[] = []
-  let batchTimeout: NodeJS.Timeout | null = null
-  let totalObservedElements = 0  // Track total elements being observed
-  
-  const processPendingBatch = async () => {
-    if (pendingElements.length === 0) return
-    
-    const elementsToTranslate = [...pendingElements]
-    pendingElements = []
-    
-    // Show progress indicator for scroll-triggered translations
-    showProgress()
-    // Update badge to show translation in progress
-    chrome.runtime.sendMessage({ action: 'updateBadge', status: 'translating' })
-    
-    try {
-      await batchTranslator.translateElements(elementsToTranslate, settings)
-      
-      // Hide progress after successful translation
-      hideProgress()
-      
-      // Check if all observed elements have been translated
-      const allTranslated = document.querySelectorAll('[data-translated="true"]').length >= totalObservedElements
-      
-      if (allTranslated) {
-        // All elements translated, clear badge
-        chrome.runtime.sendMessage({ action: 'updateBadge', status: 'completed' })
-      } else {
-        // Keep badge showing "..." to indicate background translation is active
-        chrome.runtime.sendMessage({ action: 'updateBadge', status: 'translating' })
-      }
-    } catch (error) {
-      // On error, remove from translatedElements so it can be retried
-      elementsToTranslate.forEach(element => {
-        translatedElements.delete(element)
-        // Mark element as failed for potential retry
-        element.setAttribute('data-translation-failed', 'true')
-      })
-      console.error('Batch translation error:', error)
-      
-      // Hide progress and show error status
-      hideProgress()
-      chrome.runtime.sendMessage({ action: 'updateBadge', status: 'error' })
-      
-      // Re-observe failed elements after a delay to allow retry
-      setTimeout(() => {
-        elementsToTranslate.forEach(element => {
-          // Re-observe the element to trigger retry on next scroll
-          observer.unobserve(element)
-          observer.observe(element)
-        })
-      }, 1000)
-    }
+  // Set up progress tracking
+  let progressCallback = (processed: number, total: number) => {
+    const percent = 10 + (processed / total) * 80
+    updateProgress(percent)
   }
   
-  const observer = new IntersectionObserver(
-    (entries) => {
-      const newVisibleElements: Element[] = []
-      
-      entries.forEach(entry => {
-        if (entry.isIntersecting && 
-            !translatedElements.has(entry.target) && 
-            !entry.target.hasAttribute('data-translated')) {
-          newVisibleElements.push(entry.target)
-          // Mark as pending to prevent duplicate processing
-          translatedElements.add(entry.target)
-          // Remove failed flag if it exists (for retry)
-          if (entry.target.hasAttribute('data-translation-failed')) {
-            entry.target.removeAttribute('data-translation-failed')
-          }
-        }
-      })
-      
-      if (newVisibleElements.length > 0) {
-        pendingElements.push(...newVisibleElements)
-        
-        // Clear existing timeout
-        if (batchTimeout) clearTimeout(batchTimeout)
-        
-        // Wait 100ms to collect more elements before processing
-        batchTimeout = setTimeout(() => {
-          processPendingBatch()
-        }, 100)
-      }
-    },
-    {
-      rootMargin: '50px', // Start translating 50px before element comes into view
-      threshold: 0.1
-    }
-  )
-  
-  // Store the total count setter on the observer
-  ;(observer as any).setTotalElements = (count: number) => {
-    totalObservedElements = count
+  // Translate all elements in batches
+  try {
+    await batchTranslator.translateElements(elements as Element[], {
+      apiEndpoint: settings.apiEndpoint,
+      apiKey: settings.apiKey,
+      model: settings.model,
+      targetLanguage: settings.targetLanguage
+    }, progressCallback)
+  } catch (error) {
+    console.error('Translation error:', error)
   }
-  
-  return observer
 }
 
-// Translate the page (viewport-based)
-async function translatePage() {
-  if (isTranslating) {
-    return { status: 'already_translating', message: 'Translation already in progress' }
-  }
-
-  isTranslating = true
-  showProgress()
+// Translate page with reader mode
+async function translatePage(settings: TranslationSettings) {
+  if (isTranslating) return { status: 'already_translating' }
   
-  // Update badge to show translation in progress
-  chrome.runtime.sendMessage({ action: 'updateBadge', status: 'translating' })
-
+  isTranslating = true
+  
   try {
-    // Get settings from storage
-    const storageData = await chrome.storage.local.get([
-      'apiEndpoint',
-      'apiKey',
-      'model',
-      'targetLanguage',
-      'batchSize'
-    ])
-
-    if (!storageData.apiKey) {
-      throw new Error('API key not configured. Please set it in the extension popup.')
-    }
-
-    const settings: TranslationSettings = {
-      apiEndpoint: storageData.apiEndpoint || 'https://api.openai.com/v1/chat/completions',
-      apiKey: storageData.apiKey,
-      model: storageData.model || 'gpt-4.1-nano',
-      targetLanguage: storageData.targetLanguage || 'Japanese',
-      batchSize: storageData.batchSize || 1000
-    }
-
-    // Clean up existing observer
-    if (translationObserver) {
-      translationObserver.disconnect()
-    }
-
-    // Always use viewport-based translation (Smart Translation)
-    {
-      // Set up intersection observer for viewport-based translation
-      translationObserver = createTranslationObserver(settings)
+    // Check if reader mode is enabled
+    if (settings.readabilityMode && isReaderable(document)) {
+      // Extract article content
+      const article = extractArticleForOverlay(document)
       
-      let observedCount = 0
-      
-      // Get translatable elements and set up observers
-      const translatableElements = getTranslatableElements()
-      
-      translatableElements.forEach(element => {
-        // Just observe element without setting up individual translation
-        translationObserver!.observe(element)
-        observedCount++
-      })
-      
-      // Set the total elements count on the observer
-      ;(translationObserver as any).setTotalElements(observedCount)
-      
-      // Translate visible elements immediately
-      const visibleElements = translatableElements.filter(el => {
-        const rect = el.getBoundingClientRect()
-        return rect.top < window.innerHeight && rect.bottom > 0
-      })
-      
-      // Use batch translator for visible elements
-      const batchTranslator = new BatchTranslator({
-        maxCharactersPerBatch: settings.batchSize
-      })
-      
-      // Update progress
-      if (progressIndicator) {
-        progressIndicator.textContent = `Translating visible content... (${visibleElements.length} elements)`
-      }
-      
-      await batchTranslator.translateElements(visibleElements, settings)
-      
-      // Mark translated elements
-      visibleElements.forEach(element => {
-        translatedElements.add(element)
-        pendingTranslations.delete(element)
-      })
-      
-      hideProgress()
-      
-      // Show info about viewport translation
-      if (observedCount > visibleElements.length) {
-        showInfo(`Translated ${visibleElements.length} visible elements. ${observedCount - visibleElements.length} more will translate as you scroll.`)
-        // Keep badge showing "..." to indicate more translations will happen on scroll
-        chrome.runtime.sendMessage({ action: 'updateBadge', status: 'translating' })
-      } else {
-        // All elements translated, clear badge
+      if (article) {
+        // Create and show overlay
+        overlayElement = createOverlay()
+        document.body.appendChild(overlayElement)
+        
+        // Prevent background scrolling
+        document.body.style.overflow = 'hidden'
+        
+        // Display and translate article
+        await displayArticleInOverlay(article, settings)
+        
         chrome.runtime.sendMessage({ action: 'updateBadge', status: 'completed' })
+        return { status: 'completed' }
       }
-      
-      return { status: 'completed', translatedCount: visibleElements.length, totalElements: observedCount }
     }
-
+    
+    // Fallback: Show message that page is not suitable for reader mode
+    showInfo('This page is not suitable for Reader Mode. Please try a different page with article content.')
+    chrome.runtime.sendMessage({ action: 'updateBadge', status: 'error' })
+    return { status: 'not_readable' }
+    
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Translation failed'
     showError(message)
@@ -293,7 +202,6 @@ async function translatePage() {
 // Show info message
 function showInfo(message: string) {
   const infoDiv = document.createElement('div')
-  infoDiv.className = 'translation-info'
   infoDiv.textContent = message
   infoDiv.style.cssText = `
     position: fixed;
@@ -312,60 +220,53 @@ function showInfo(message: string) {
   setTimeout(() => infoDiv.remove(), 5000)
 }
 
-// Restore original content
-function restorePage() {
-  // Clean up observer
-  if (translationObserver) {
-    translationObserver.disconnect()
-    translationObserver = null
-  }
-  
-  // Clear translation state
-  translatedElements = new WeakSet<Element>()
-  pendingTranslations.clear()
-  
-  // Restore HTML content first
-  const elementsWithOriginalHTML = document.querySelectorAll('[data-original-html]')
-  elementsWithOriginalHTML.forEach(element => {
-    const originalHTML = element.getAttribute('data-original-html')
-    if (originalHTML !== null) {
-      element.innerHTML = originalHTML
-      element.removeAttribute('data-original-html')
-    }
-  })
-  
-  // Then restore text content
-  const elementsWithOriginalText = document.querySelectorAll('[data-original-text]')
-  elementsWithOriginalText.forEach(element => {
-    const originalText = element.getAttribute('data-original-text')
-    if (originalText !== null) {
-      // Find text node in element
-      const walker = document.createTreeWalker(
-        element,
-        NodeFilter.SHOW_TEXT,
-        null
-      )
-      
-      const textNode = walker.nextNode()
-      if (textNode) {
-        textNode.textContent = originalText
-      }
-      
-      element.removeAttribute('data-original-text')
-    }
-  })
-
-  return { status: 'restored' }
+// Show error message
+function showError(message: string) {
+  const errorDiv = document.createElement('div')
+  errorDiv.textContent = message
+  errorDiv.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #d33c26;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    z-index: 9999;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 14px;
+  `
+  document.body.appendChild(errorDiv)
+  setTimeout(() => errorDiv.remove(), 5000)
 }
 
-// Listen for messages from background script
+// Restore page (close overlay)
+function restorePage() {
+  removeOverlay()
+  chrome.runtime.sendMessage({ action: 'updateBadge', status: 'restored' })
+}
+
+// Listen for messages from popup/background
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   if (request.action === 'translate') {
-    translatePage().then(sendResponse)
-    return true // Will respond asynchronously
+    // Get settings and translate
+    chrome.storage.local.get([
+      'apiEndpoint',
+      'apiKey', 
+      'model',
+      'targetLanguage',
+      'batchSize',
+      'readabilityMode'
+    ], (settings) => {
+      translatePage(settings as TranslationSettings).then(sendResponse)
+    })
+    return true // Keep message channel open for async response
   } else if (request.action === 'restore') {
-    sendResponse(restorePage())
+    restorePage()
+    sendResponse({ status: 'restored' })
   }
 })
 
-export {}
+// Export functions for testing
+export { translatePage, restorePage }

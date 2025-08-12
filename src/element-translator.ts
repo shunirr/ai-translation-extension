@@ -66,6 +66,7 @@ export async function translateElement(element: Element, settings: TranslationSe
 }
 
 // Simplified approach: Get all leaf elements with text
+// Now accepts optional root element for scoped translation
 export function getTranslatableElements(root: Element = document.body): Element[] {
   const elements: Element[] = []
   const processed = new Set<Element>()

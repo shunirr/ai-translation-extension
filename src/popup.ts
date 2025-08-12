@@ -7,6 +7,7 @@ const modelInput = document.getElementById('model') as HTMLInputElement
 const targetLanguageInput = document.getElementById('target-language') as HTMLInputElement
 const apiRpsInput = document.getElementById('api-rps') as HTMLInputElement
 const batchSizeInput = document.getElementById('batch-size') as HTMLInputElement
+const readabilityModeCheckbox = document.getElementById('readability-mode') as HTMLInputElement
 const saveSettingsButton = document.getElementById('save-settings') as HTMLButtonElement
 const translateButton = document.getElementById('translate-page') as HTMLButtonElement
 const restoreButton = document.getElementById('restore-page') as HTMLButtonElement
@@ -20,7 +21,8 @@ async function loadSettings() {
     'model',
     'targetLanguage',
     'apiRps',
-    'batchSize'
+    'batchSize',
+    'readabilityMode'
   ])
   
   if (settings.apiEndpoint) {
@@ -45,6 +47,11 @@ async function loadSettings() {
   } else {
     batchSizeInput.value = '1000' // Default to 1000 characters
   }
+  if (settings.readabilityMode !== undefined) {
+    readabilityModeCheckbox.checked = settings.readabilityMode
+  } else {
+    readabilityModeCheckbox.checked = true // Default to enabled
+  }
 }
 
 // Save settings
@@ -55,7 +62,8 @@ async function saveSettings() {
     model: modelInput.value || 'gpt-4.1-nano',
     targetLanguage: targetLanguageInput.value || 'Japanese',
     apiRps: parseFloat(apiRpsInput.value) || 0.9,
-    batchSize: parseInt(batchSizeInput.value) || 1000
+    batchSize: parseInt(batchSizeInput.value) || 1000,
+    readabilityMode: readabilityModeCheckbox.checked
   }
   
   await chrome.storage.local.set(settings)
