@@ -114,24 +114,33 @@ export class BatchTranslator {
       }
     }
     
-    // Now batch all uncached items, maximizing batch size utilization
-    // Count characters (not bytes) for batch size
+    // Batch items respecting element boundaries to avoid cutting sentences
+    // Elements like <p>, <h1>, etc. contain complete sentences/paragraphs
     for (const item of uncachedItems) {
-      // Calculate the character count this item would add to the batch
       const itemLength = item.placeholderText.length
       const delimiterLength = currentBatch.length > 0 ? this.config.batchDelimiter.length : 0
       const totalItemSize = itemLength + delimiterLength
       
-      // Only create new batch if adding this item would exceed the limit
-      // AND we already have items in the current batch
+      // Start new batch if:
+      // 1. Current batch is not empty AND
+      // 2. Adding this item would exceed the limit
+      // This ensures complete elements (paragraphs/headers) stay together
       if (currentBatch.length > 0 && currentSize + totalItemSize > this.config.maxCharactersPerBatch) {
         batches.push(currentBatch)
         currentBatch = []
         currentSize = 0
       }
       
+      // Special case: If single item exceeds max size, process it alone
+      // This prevents infinite loops for very long paragraphs
+      if (currentBatch.length === 0 && itemLength > this.config.maxCharactersPerBatch) {
+        console.warn(`Element exceeds max batch size (${itemLength} > ${this.config.maxCharactersPerBatch}), processing alone`)
+        batches.push([item])
+        continue
+      }
+      
       currentBatch.push(item)
-      currentSize += totalItemSize
+      currentSize += currentBatch.length === 1 ? itemLength : totalItemSize
     }
     
     // Add the last batch
