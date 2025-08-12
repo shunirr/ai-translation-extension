@@ -2,6 +2,7 @@
 
 import { getTranslatableElements } from './element-translator'
 import { BatchTranslator } from './batch-translator'
+import { isReaderable, extractReadableRoot } from './readability-adapter'
 
 interface TranslationSettings {
   apiEndpoint: string
@@ -9,6 +10,8 @@ interface TranslationSettings {
   model: string
   targetLanguage: string
   batchSize?: number
+  readabilityMode?: 'off' | 'limited' | 'overlay' | 'hybrid'
+  charThreshold?: number
 }
 
 // Translation state
@@ -229,8 +232,35 @@ async function translatePage() {
       
       let observedCount = 0
       
-      // Get translatable elements and set up observers
-      const translatableElements = getTranslatableElements()
+      // Determine root element based on readability mode
+      let rootElement = document.body
+      
+      // Apply readability-based extraction if enabled
+      if (settings.readabilityMode && settings.readabilityMode !== 'off') {
+        // Check if document is probably readerable
+        if (isReaderable(document)) {
+          console.debug('Document is readerable, attempting to extract article root')
+          
+          const extractedRoot = extractReadableRoot(document, {
+            charThreshold: settings.charThreshold ?? 500
+          })
+          
+          if (extractedRoot) {
+            console.debug('Using extracted root element for translation:', extractedRoot.tagName)
+            rootElement = extractedRoot as HTMLElement
+            
+            // Show info about optimized translation
+            showInfo('Using optimized article translation mode')
+          } else {
+            console.debug('Could not extract article root, falling back to full page')
+          }
+        } else {
+          console.debug('Document is not readerable, using full page translation')
+        }
+      }
+      
+      // Get translatable elements from the determined root
+      const translatableElements = getTranslatableElements(rootElement)
       
       translatableElements.forEach(element => {
         // Just observe element without setting up individual translation

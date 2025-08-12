@@ -22,6 +22,9 @@ const mockElements = {
   targetLanguage: { value: 'Japanese', addEventListener: vi.fn() } as any,
   apiRps: { value: '0.9', addEventListener: vi.fn() } as any,
   batchSize: { value: '1000', addEventListener: vi.fn() } as any,
+  readabilityMode: { value: 'limited', addEventListener: vi.fn() } as any,
+  charThreshold: { value: '500', addEventListener: vi.fn() } as any,
+  charThresholdGroup: { style: { display: 'block' } } as any,
   saveSettings: { addEventListener: vi.fn() } as any,
   translatePage: { addEventListener: vi.fn() } as any,
   restorePage: { addEventListener: vi.fn() } as any,
@@ -37,6 +40,9 @@ document.getElementById = vi.fn((id: string) => {
     'target-language': mockElements.targetLanguage,
     'api-rps': mockElements.apiRps,
     'batch-size': mockElements.batchSize,
+    'readability-mode': mockElements.readabilityMode,
+    'char-threshold': mockElements.charThreshold,
+    'char-threshold-group': mockElements.charThresholdGroup,
     'save-settings': mockElements.saveSettings,
     'translate-page': mockElements.translatePage,
     'restore-page': mockElements.restorePage,
@@ -86,7 +92,9 @@ describe('Popup', () => {
         'model',
         'targetLanguage',
         'apiRps',
-        'batchSize'
+        'batchSize',
+        'readabilityMode',
+        'charThreshold'
       ])
       
       expect(mockElements.apiEndpoint.value).toBe('https://custom.api.com')
@@ -130,7 +138,9 @@ describe('Popup', () => {
         model: 'gpt-4',
         targetLanguage: 'Japanese',
         apiRps: 0.9,
-        batchSize: 1000
+        batchSize: 1000,
+        readabilityMode: 'limited',
+        charThreshold: 500
       })
       
       expect(mockElements.status.className).toContain('success')
@@ -155,7 +165,9 @@ describe('Popup', () => {
         model: 'gpt-4.1-nano',
         targetLanguage: 'ja',
         apiRps: 0.9,
-        batchSize: 1000
+        batchSize: 1000,
+        readabilityMode: 'limited',
+        charThreshold: 500
       })
     })
   })

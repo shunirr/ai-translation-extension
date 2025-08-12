@@ -49,6 +49,25 @@
         </small>
       </div>
       
+      <div class="form-group">
+        <label for="readability-mode">Content Extraction Mode:</label>
+        <select id="readability-mode">
+          <option value="off">Off - Translate entire page</option>
+          <option value="limited" selected>Limited - Article content only (recommended)</option>
+          <option value="overlay">Overlay - Reader view (experimental)</option>
+        </select>
+        <small style="display: block; margin-top: 4px; color: #666;">
+          Optimize translation for article content
+        </small>
+      </div>
+      
+      <div class="form-group" id="char-threshold-group">
+        <label for="char-threshold">Minimum Article Length:</label>
+        <input type="number" id="char-threshold" min="100" max="2000" step="100" value="500">
+        <small style="display: block; margin-top: 4px; color: #666;">
+          Minimum characters to consider as article (default: 500)
+        </small>
+      </div>
       
       <button id="save-settings">Save Settings</button>
     </div>

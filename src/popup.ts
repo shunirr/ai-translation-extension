@@ -7,6 +7,9 @@ const modelInput = document.getElementById('model') as HTMLInputElement
 const targetLanguageInput = document.getElementById('target-language') as HTMLInputElement
 const apiRpsInput = document.getElementById('api-rps') as HTMLInputElement
 const batchSizeInput = document.getElementById('batch-size') as HTMLInputElement
+const readabilityModeSelect = document.getElementById('readability-mode') as HTMLSelectElement
+const charThresholdInput = document.getElementById('char-threshold') as HTMLInputElement
+const charThresholdGroup = document.getElementById('char-threshold-group') as HTMLDivElement
 const saveSettingsButton = document.getElementById('save-settings') as HTMLButtonElement
 const translateButton = document.getElementById('translate-page') as HTMLButtonElement
 const restoreButton = document.getElementById('restore-page') as HTMLButtonElement
@@ -20,7 +23,9 @@ async function loadSettings() {
     'model',
     'targetLanguage',
     'apiRps',
-    'batchSize'
+    'batchSize',
+    'readabilityMode',
+    'charThreshold'
   ])
   
   if (settings.apiEndpoint) {
@@ -45,6 +50,19 @@ async function loadSettings() {
   } else {
     batchSizeInput.value = '1000' // Default to 1000 characters
   }
+  if (settings.readabilityMode !== undefined) {
+    readabilityModeSelect.value = settings.readabilityMode
+  } else {
+    readabilityModeSelect.value = 'limited' // Default to limited mode
+  }
+  if (settings.charThreshold !== undefined) {
+    charThresholdInput.value = settings.charThreshold.toString()
+  } else {
+    charThresholdInput.value = '500' // Default to 500 characters
+  }
+  
+  // Show/hide char threshold based on mode
+  toggleCharThresholdVisibility()
 }
 
 // Save settings
@@ -55,7 +73,9 @@ async function saveSettings() {
     model: modelInput.value || 'gpt-4.1-nano',
     targetLanguage: targetLanguageInput.value || 'Japanese',
     apiRps: parseFloat(apiRpsInput.value) || 0.9,
-    batchSize: parseInt(batchSizeInput.value) || 1000
+    batchSize: parseInt(batchSizeInput.value) || 1000,
+    readabilityMode: readabilityModeSelect.value as 'off' | 'limited' | 'overlay',
+    charThreshold: parseInt(charThresholdInput.value) || 500
   }
   
   await chrome.storage.local.set(settings)
@@ -94,10 +114,21 @@ async function handleRestore() {
   }
 }
 
+// Toggle char threshold visibility based on readability mode
+function toggleCharThresholdVisibility() {
+  const mode = readabilityModeSelect.value
+  if (mode === 'off') {
+    charThresholdGroup.style.display = 'none'
+  } else {
+    charThresholdGroup.style.display = 'block'
+  }
+}
+
 // Event listeners
 saveSettingsButton.addEventListener('click', saveSettings)
 translateButton.addEventListener('click', handleTranslate)
 restoreButton.addEventListener('click', handleRestore)
+readabilityModeSelect.addEventListener('change', toggleCharThresholdVisibility)
 
 // Make click handlers available for testing
 declare global {
